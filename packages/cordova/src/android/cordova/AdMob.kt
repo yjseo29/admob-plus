@@ -13,11 +13,13 @@ import admob.plus.core.configForTestLabIfNeeded
 import admob.plus.core.isRunningInTestLab
 import admob.plus.core.optFloat
 import android.app.Activity
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.util.Log
 import android.view.ViewGroup
 import android.webkit.WebView
-import com.google.android.gms.ads.MobileAds
+import com.google.android.libraries.ads.mobile.sdk.MobileAds
+import com.google.android.libraries.ads.mobile.sdk.initialization.InitializationConfig
 import org.apache.cordova.CallbackContext
 import org.apache.cordova.CordovaPlugin
 import org.apache.cordova.PluginResult
@@ -31,7 +33,10 @@ private const val TAG = "AdMobPlus"
 class AdMob : CordovaPlugin() {
     lateinit var context: CallbackContext
     private var readyCallbackContext: CallbackContext? = null
+    @Volatile
     private var sdkReady = false
+    @Volatile
+    private var pendingConfig = JSONObject()
     private val eventQueue: ArrayList<PluginResult> = arrayListOf()
 
     private val actions = mapOf(
@@ -85,29 +90,53 @@ class AdMob : CordovaPlugin() {
             ctx.resolve(mapOf("version" to version))
             return
         }
-        MobileAds.initialize(ctx.activity) {
-            configForTestLabIfNeeded(ctx.activity)
-            ctx.resolve(mapOf("version" to version))
+        val requestConfiguration = buildRequestConfiguration(pendingConfig)
+        val initializationConfig = InitializationConfig.Builder(getApplicationId(ctx.activity))
+            .setRequestConfiguration(requestConfiguration)
+            .build()
+
+        // Next-Gen initialization can perform disk and network I/O and must not run on the main thread.
+        cordova.threadPool.execute {
+            try {
+                MobileAds.initialize(ctx.activity.applicationContext, initializationConfig) {
+                    applyRuntimeConfig(pendingConfig)
+                    sdkReady = true
+                    ctx.resolve(mapOf("version" to version))
+                }
+            } catch (error: Exception) {
+                ctx.reject(error.message ?: "Failed to initialize GMA Next-Gen SDK")
+            }
         }
-        sdkReady = true
     }
 
     private fun executeConfigure(ctx: ExecuteContext) {
-        ctx.optBoolean("appMuted")?.let {
-            MobileAds.setAppMuted(it)
-        }
-        optFloat(ctx.opts, "appVolume")?.let {
-            MobileAds.setAppVolume(it)
-        }
-        ctx.optBoolean("sameAppKey")?.let {
-            MobileAds.putPublisherFirstPartyIdEnabled(it)
-        }
-        ctx.optBoolean("publisherFirstPartyIDEnabled")?.let {
-            MobileAds.putPublisherFirstPartyIdEnabled(it)
-        }
-        MobileAds.setRequestConfiguration(buildRequestConfiguration(ctx.opts))
-        configForTestLabIfNeeded(activity)
+        pendingConfig = JSONObject(ctx.opts.toString())
+        if (sdkReady) applyRuntimeConfig(pendingConfig)
         ctx.resolve()
+    }
+
+    private fun applyRuntimeConfig(opts: JSONObject) {
+        if (!MobileAds.isInitialized) return
+        if (opts.has("appMuted")) {
+            MobileAds.setUserMutedApp(opts.optBoolean("appMuted"))
+        }
+        optFloat(opts, "appVolume")?.let {
+            MobileAds.setUserControlledAppVolume(it)
+        }
+        if (opts.has("publisherFirstPartyIDEnabled")) {
+            MobileAds.putPublisherFirstPartyIdEnabled(opts.optBoolean("publisherFirstPartyIDEnabled"))
+        }
+        MobileAds.setRequestConfiguration(buildRequestConfiguration(opts))
+        configForTestLabIfNeeded(activity)
+    }
+
+    private fun getApplicationId(activity: Activity): String {
+        val applicationInfo = activity.packageManager.getApplicationInfo(
+            activity.packageName,
+            PackageManager.GET_META_DATA
+        )
+        return applicationInfo.metaData?.getString("com.google.android.gms.ads.APPLICATION_ID")
+            ?: throw IllegalStateException("APP_ID_ANDROID is required to initialize GMA Next-Gen SDK")
     }
 
     private fun executeAdCreate(ctx: ExecuteContext) {

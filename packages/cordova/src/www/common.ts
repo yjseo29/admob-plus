@@ -43,17 +43,15 @@ type MaxAdContentRating =
   | /** Content suitability is unspecified. */ "";
 
 export interface RequestConfig {
+  /** Selects the Next-Gen age-restricted treatment for every Android ad request. */
+  ageRestrictedTreatment?: "child" | "teen" | "unspecified";
   maxAdContentRating?: MaxAdContentRating;
-  tagForChildDirectedTreatment?: boolean | null;
-  tagForUnderAgeOfConsent?: boolean | null;
   testDeviceIds?: string[];
 }
 
 export interface AdMobConfig extends RequestConfig {
   appMuted?: boolean;
   appVolume?: number;
-  /** @deprecated Use publisherFirstPartyIDEnabled instead */
-  sameAppKey?: boolean;
   publisherFirstPartyIDEnabled?: boolean;
 }
 

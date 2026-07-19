@@ -1,0 +1,6 @@
+// Next-Gen contains its own Google ad implementation. Mediation adapters can still
+// declare the legacy SDK transitively, so exclude both legacy artifacts globally.
+configurations.configureEach {
+    exclude group: 'com.google.android.gms', module: 'play-services-ads'
+    exclude group: 'com.google.android.gms', module: 'play-services-ads-lite'
+}

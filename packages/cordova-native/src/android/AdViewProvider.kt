@@ -7,18 +7,16 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.RatingBar
 import android.widget.TextView
-import com.google.android.gms.ads.nativead.MediaView
-import com.google.android.gms.ads.nativead.NativeAd
-import com.google.android.gms.ads.nativead.NativeAdView
+import com.google.android.libraries.ads.mobile.sdk.nativead.MediaView
+import com.google.android.libraries.ads.mobile.sdk.nativead.NativeAd
+import com.google.android.libraries.ads.mobile.sdk.nativead.NativeAdView
 import org.apache.cordova.CordovaInterface
 
 class AdViewProvider(private val cordova: CordovaInterface) : ViewProvider {
     override fun createView(nativeAd: NativeAd): View {
         val adView = cordova.activity.layoutInflater
             .inflate(getResourceId("ad_unified", "layout"), null) as NativeAdView
-        // Set the media view.
-        adView.mediaView =
-            adView.findViewById<View>(id("ad_media")) as MediaView
+        val mediaView = adView.findViewById<View>(id("ad_media")) as MediaView
 
         // Set other ad assets.
         adView.headlineView = adView.findViewById(id("ad_headline"))
@@ -32,7 +30,6 @@ class AdViewProvider(private val cordova: CordovaInterface) : ViewProvider {
 
         // The headline and mediaContent are guaranteed to be in every NativeAd.
         (adView.headlineView as TextView?)!!.text = nativeAd.headline
-        adView.mediaView!!.mediaContent = nativeAd.mediaContent
 
         // These assets aren't guaranteed to be in every NativeAd, so it's important to
         // check before trying to display them.
@@ -81,9 +78,8 @@ class AdViewProvider(private val cordova: CordovaInterface) : ViewProvider {
             adView.advertiserView!!.visibility = View.VISIBLE
         }
 
-        // This method tells the Google Mobile Ads SDK that you have finished populating your
-        // native ad view with this native ad.
-        adView.setNativeAd(nativeAd)
+        // Next-Gen registers the native ad and its media asset in one atomic operation.
+        adView.registerNativeAd(nativeAd, mediaView)
         return adView
     }
 

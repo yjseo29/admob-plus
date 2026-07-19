@@ -24,6 +24,53 @@ You can find the documentation [on the website](https://admob-plus.github.io/doc
 - WebView Ads ([admob-plus-cordova-webview-ad](https://www.npmjs.com/package/admob-plus-cordova-webview-ad))
 - User Consent ([cordova-plugin-consent](https://www.npmjs.com/package/cordova-plugin-consent))
 
+## Android GMA Next-Gen prerelease
+
+This branch uses [GMA Next-Gen SDK 1.2.1][migration-guide] for Android.
+The Cordova JavaScript bridge and the iOS implementation remain in place. An
+intermediate update to Google Mobile Ads SDK (Legacy) 25.4.0 is not required;
+Android applications can migrate directly from the previous 24.2.0 dependency.
+
+Android requirements:
+
+- Cordova Android 14.0.0 or newer
+- Android `minSdk` 24 or newer
+- Android `compileSdk` 35 or newer
+- Kotlin 1.9 or newer
+
+The Android SDK version preference was renamed from `PLAY_SERVICES_VERSION` to
+`GMA_NEXT_GEN_VERSION` and defaults to `1.2.1`:
+
+```xml
+<preference name="GMA_NEXT_GEN_VERSION" value="1.2.1" />
+```
+
+Next-Gen initialization is performed programmatically with
+`InitializationConfig` on a background worker thread. The plugin reads
+`APP_ID_ANDROID` from manifest metadata, so the existing Cordova application ID
+preference is still required.
+
+### Removed APIs
+
+The following deprecated APIs are no longer supported by this prerelease:
+
+- Replace `AdSizeType.SMART_BANNER` with `{ adaptive: "anchored" }`.
+- Replace `tagForChildDirectedTreatment` with `ageRestrictedTreatment` set to
+  `"child"` or `"unspecified"`.
+- Replace `tagForUnderAgeOfConsent` with `ageRestrictedTreatment` set to
+  `"teen"` or `"unspecified"`.
+- Replace `sameAppKey` with `publisherFirstPartyIDEnabled`.
+
+The default banner is now a large anchored adaptive banner. Custom banner
+`width`, `height`, and `maxHeight` values are density-independent pixels (dp);
+they must not be pre-converted to physical pixels.
+
+Mediation adapters that transitively depend on the Legacy SDK can otherwise
+package both SDKs. The plugin excludes `play-services-ads` and
+`play-services-ads-lite` globally, as required by the Next-Gen migration guide.
+Verify every mediation adapter used by the application against the current
+Next-Gen support matrix before releasing.
+
 ## Compare to other projects
 
 |              Project              |  No Ad-Sharing  |    Fully Open Sourced     |        No Remote Control        |
@@ -86,3 +133,4 @@ AdMob Plus Cordova is [MIT licensed][b6-l].
 [b5]: https://img.shields.io/snyk/vulnerabilities/npm/admob-plus-cordova
 [b6]: https://img.shields.io/npm/l/admob-plus-cordova
 [b6-l]: https://github.com/admob-plus/admob-plus/blob/master/LICENSE
+[migration-guide]: https://developers.google.com/admob/android/next-gen/migration

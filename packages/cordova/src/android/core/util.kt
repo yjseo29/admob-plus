@@ -6,12 +6,13 @@ import android.app.Activity
 import android.content.res.Resources
 import android.os.Bundle
 import android.provider.Settings
-import android.util.DisplayMetrics
-import com.google.ads.mediation.admob.AdMobAdapter
-import com.google.android.gms.ads.AdRequest
-import com.google.android.gms.ads.AdSize
-import com.google.android.gms.ads.MobileAds
-import com.google.android.gms.ads.RequestConfiguration
+import com.google.android.libraries.ads.mobile.sdk.MobileAds
+import com.google.android.libraries.ads.mobile.sdk.banner.AdSize
+import com.google.android.libraries.ads.mobile.sdk.banner.BannerAdRequest
+import com.google.android.libraries.ads.mobile.sdk.common.AdRequest
+import com.google.android.libraries.ads.mobile.sdk.common.AgeRestrictedTreatment
+import com.google.android.libraries.ads.mobile.sdk.common.RequestConfiguration
+import com.google.android.libraries.ads.mobile.sdk.nativead.NativeAdRequest
 import org.json.JSONArray
 import org.json.JSONObject
 import java.math.BigInteger
@@ -20,61 +21,89 @@ import java.security.NoSuchAlgorithmException
 import java.util.Locale
 import kotlin.math.roundToInt
 
-fun buildAdRequest(opts: JSONObject): AdRequest {
-    val builder = AdRequest.Builder()
-    opts.optString("contentUrl", null)?.let {
+fun applyAdRequestOptions(builder: AdRequest.Builder, opts: JSONObject): AdRequest.Builder {
+    optStringOrNull(opts, "contentUrl")?.let {
         builder.setContentUrl(it)
     }
     val extras = Bundle().apply {
-        opts.optString("npa", null)?.let { npa ->
+        optStringOrNull(opts, "npa")?.let { npa ->
             putString("npa", npa)
         }
     }
-    return builder.addNetworkExtrasBundle(AdMobAdapter::class.java, extras).build()
+    return builder.setGoogleExtrasBundle(extras)
+}
+
+fun applyAdRequestOptions(builder: BannerAdRequest.Builder, opts: JSONObject): BannerAdRequest.Builder {
+    optStringOrNull(opts, "contentUrl")?.let {
+        builder.setContentUrl(it)
+    }
+    return builder.setGoogleExtrasBundle(buildGoogleExtras(opts))
+}
+
+fun applyAdRequestOptions(builder: NativeAdRequest.Builder, opts: JSONObject): NativeAdRequest.Builder {
+    optStringOrNull(opts, "contentUrl")?.let {
+        builder.setContentUrl(it)
+    }
+    return builder.setGoogleExtrasBundle(buildGoogleExtras(opts))
+}
+
+private fun buildGoogleExtras(opts: JSONObject): Bundle {
+    return Bundle().apply {
+        optStringOrNull(opts, "npa")?.let { npa ->
+            putString("npa", npa)
+        }
+    }
+}
+
+private fun optStringOrNull(opts: JSONObject, name: String): String? {
+    return if (opts.has(name) && !opts.isNull(name)) opts.optString(name) else null
+}
+
+fun buildAdRequest(adUnitId: String, opts: JSONObject): AdRequest {
+    val builder = AdRequest.Builder(adUnitId)
+    applyAdRequestOptions(builder, opts)
+    return builder.build()
 }
 
 fun buildAdSize(opts: JSONObject, activity: Activity): AdSize {
     val name = "size"
     if (!opts.has(name)) {
-        return AdSize.SMART_BANNER
+        return AdSize.getLargeAnchoredAdaptiveBannerAdSize(activity, availableWidthDp(activity))
     }
     val adSizeObj = opts.optJSONObject(name)
-    val adSize = AdSizeType.getAdSize(opts.optInt(name))
     if (adSizeObj == null) {
-        return adSize ?: AdSize.SMART_BANNER
+        return AdSizeType.getAdSize(opts.optInt(name))
+            ?: AdSize.getLargeAnchoredAdaptiveBannerAdSize(activity, availableWidthDp(activity))
     }
     val adaptive = adSizeObj.optString("adaptive")
-    val w =
-        pxToDp(if (adSizeObj.has("width")) adSizeObj.optInt("width") else Resources.getSystem().displayMetrics.widthPixels)
+    // Cordova banner dimensions are expressed in dp. Only the physical display fallback needs conversion.
+    val width = if (adSizeObj.has("width")) adSizeObj.optInt("width") else availableWidthDp(activity)
     if ("inline" == adaptive) {
         if (adSizeObj.has("maxHeight")) {
-            return AdSize.getInlineAdaptiveBannerAdSize(
-                w,
-                pxToDp(adSizeObj.optInt("maxHeight"))
-            )
+            return AdSize.getInlineAdaptiveBannerAdSize(width, adSizeObj.optInt("maxHeight"))
         }
-    } else {
+        return AdSize.getCurrentOrientationInlineAdaptiveBannerAdSize(activity, width)
+    }
+    if ("anchored" == adaptive) {
         return when (adSizeObj.optString("orientation")) {
-            "portrait" -> AdSize.getPortraitAnchoredAdaptiveBannerAdSize(
-                activity, w
+            "portrait" -> AdSize.getLargePortraitAnchoredAdaptiveBannerAdSize(
+                activity, width
             )
 
-            "landscape" -> AdSize.getLandscapeAnchoredAdaptiveBannerAdSize(
-                activity, w
+            "landscape" -> AdSize.getLargeLandscapeAnchoredAdaptiveBannerAdSize(
+                activity, width
             )
 
-            else -> AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(
-                activity, w
+            else -> AdSize.getLargeAnchoredAdaptiveBannerAdSize(
+                activity, width
             )
         }
     }
-    return AdSize(w, pxToDp(adSizeObj.optInt("height")))
+    return AdSize(width, adSizeObj.optInt("height"))
 }
 
-fun optBooleanToInt(opts: JSONObject, name: String, vNull: Int, vTrue: Int, vFalse: Int): Int? {
-    if (!opts.has(name)) return null
-    if (opts.isNull(name)) return vNull
-    return if (opts.optBoolean(name)) vTrue else vFalse
+private fun availableWidthDp(activity: Activity): Int {
+    return (activity.resources.displayMetrics.widthPixels / activity.resources.displayMetrics.density).roundToInt()
 }
 
 fun optFloat(opts: JSONObject, name: String): Float? {
@@ -84,26 +113,22 @@ fun optFloat(opts: JSONObject, name: String): Float? {
 
 fun buildRequestConfiguration(opts: JSONObject): RequestConfiguration {
     val builder = RequestConfiguration.Builder()
-    opts.optString("maxAdContentRating", null)?.let {
+    when (opts.optString("maxAdContentRating", "").uppercase(Locale.US)) {
+        "G" -> RequestConfiguration.MaxAdContentRating.MAX_AD_CONTENT_RATING_G
+        "PG" -> RequestConfiguration.MaxAdContentRating.MAX_AD_CONTENT_RATING_PG
+        "T" -> RequestConfiguration.MaxAdContentRating.MAX_AD_CONTENT_RATING_T
+        "MA" -> RequestConfiguration.MaxAdContentRating.MAX_AD_CONTENT_RATING_MA
+        else -> null
+    }?.let {
         builder.setMaxAdContentRating(it)
     }
-    optBooleanToInt(
-        opts,
-        "tagForChildDirectedTreatment",
-        RequestConfiguration.TAG_FOR_CHILD_DIRECTED_TREATMENT_UNSPECIFIED,
-        RequestConfiguration.TAG_FOR_CHILD_DIRECTED_TREATMENT_TRUE,
-        RequestConfiguration.TAG_FOR_CHILD_DIRECTED_TREATMENT_FALSE
-    )?.let {
-        builder.setTagForChildDirectedTreatment(it)
-    }
-    optBooleanToInt(
-        opts,
-        "tagForUnderAgeOfConsent",
-        RequestConfiguration.TAG_FOR_UNDER_AGE_OF_CONSENT_UNSPECIFIED,
-        RequestConfiguration.TAG_FOR_UNDER_AGE_OF_CONSENT_TRUE,
-        RequestConfiguration.TAG_FOR_UNDER_AGE_OF_CONSENT_FALSE
-    )?.let {
-        builder.setTagForUnderAgeOfConsent(it)
+    when (opts.optString("ageRestrictedTreatment", "").lowercase(Locale.US)) {
+        "child" -> AgeRestrictedTreatment.CHILD
+        "teen" -> AgeRestrictedTreatment.TEEN
+        "unspecified" -> AgeRestrictedTreatment.UNSPECIFIED
+        else -> null
+    }?.let {
+        builder.setAgeRestrictedTreatment(it)
     }
     if (opts.has("testDeviceIds")) {
         builder.setTestDeviceIds(jsonArray2stringList(opts.optJSONArray("testDeviceIds")))
@@ -116,14 +141,17 @@ fun configForTestLabIfNeeded(activity: Activity) {
         return
     }
     val config = MobileAds.getRequestConfiguration()
-    val testDeviceIds = config.testDeviceIds
+    val testDeviceIds = config.testDeviceIds.toMutableList()
     val deviceId = computeDeviceID(activity)
     if (deviceId in testDeviceIds) {
         return
     }
     testDeviceIds.add(deviceId)
-    val builder = config.toBuilder()
-    builder.setTestDeviceIds(testDeviceIds)
+    val builder = RequestConfiguration.Builder()
+        .setAgeRestrictedTreatment(config.ageRestrictedTreatment)
+        .setMaxAdContentRating(config.maxAdContentRating)
+        .setPublisherPrivacyPersonalizationState(config.publisherPrivacyPersonalizationState)
+        .setTestDeviceIds(testDeviceIds)
     MobileAds.setRequestConfiguration(builder.build())
 }
 
@@ -146,8 +174,7 @@ fun dpToPx(dp: Double): Double {
 }
 
 fun pxToDp(px: Int): Int {
-    val displayMetrics = Resources.getSystem().displayMetrics
-    return (px / (displayMetrics.xdpi / DisplayMetrics.DENSITY_DEFAULT)).roundToInt()
+    return (px / Resources.getSystem().displayMetrics.density).roundToInt()
 }
 
 fun jsonArray2stringList(a: JSONArray?): List<String> {

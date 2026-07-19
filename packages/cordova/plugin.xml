@@ -9,21 +9,17 @@
 
     <engines>
         <engine name="cordova" version=">=7.0.0" />
-        <engine name="cordova-android" version=">=6.0.0" />
+        <engine name="cordova-android" version=">=14.0.0" />
         <engine name="cordova-ios" version=">=5.0.0" />
     </engines>
 
     <platform name="android">
         <preference name="APP_ID_ANDROID" default="ca-app-pub-xxx~yyy" />
-        <preference name="PLAY_SERVICES_VERSION" default="24.2.0" />
+        <preference name="GMA_NEXT_GEN_VERSION" default="1.2.1" />
 
         <config-file target="AndroidManifest.xml" parent="/manifest/application">
-            <activity android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|uiMode|screenSize|smallestScreenSize" android:excludeFromRecents="true" android:name="com.google.android.gms.ads.AdActivity" android:noHistory="true" />
+            <!-- UMP and other Google components still discover the AdMob app ID from manifest metadata. -->
             <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="$APP_ID_ANDROID" />
-            <meta-data android:name="com.google.android.gms.ads.DELAY_APP_MEASUREMENT_INIT" android:value="true"/>
-            <meta-data android:name="com.google.android.gms.ads.flag.OPTIMIZE_INITIALIZATION" android:value="true" />
-            <meta-data android:name="com.google.android.gms.ads.flag.OPTIMIZE_AD_LOADING" android:value="true" />
-            <meta-data android:name="com.google.android.gms.ads.flag.INTEGRATION_MANAGER" android:value="webview" />
         </config-file>
 
         <config-file target="res/xml/config.xml" parent="/*">
@@ -32,7 +28,8 @@
             </feature>
         </config-file>
 
-        <framework src="com.google.android.gms:play-services-ads:$PLAY_SERVICES_VERSION" />
+        <framework src="com.google.android.libraries.ads.mobile.sdk:ads-mobile-sdk:$GMA_NEXT_GEN_VERSION" />
+        <framework src="src/android/next-gen.gradle" custom="true" type="gradleReference" />
 
         <source-file src="src/android/core/util.kt" target-dir="app/src/main/kotlin/admob/plus/core" />
         <source-file src="src/android/cordova/AdMob.kt" target-dir="app/src/main/kotlin/admob/plus/cordova" />

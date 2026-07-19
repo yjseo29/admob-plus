@@ -2,6 +2,7 @@ package admob.plus.cordova.ads
 
 import admob.plus.cordova.Events
 import admob.plus.cordova.ExecuteContext
+import admob.plus.core.applyAdRequestOptions
 import admob.plus.core.buildAdSize
 import admob.plus.core.pxToDp
 import android.annotation.SuppressLint
@@ -13,24 +14,27 @@ import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.widget.LinearLayout
 import android.widget.RelativeLayout
-import com.google.android.gms.ads.AdListener
-import com.google.android.gms.ads.AdSize
-import com.google.android.gms.ads.AdView
-import com.google.android.gms.ads.LoadAdError
+import com.google.android.libraries.ads.mobile.sdk.banner.AdSize
+import com.google.android.libraries.ads.mobile.sdk.banner.AdView
+import com.google.android.libraries.ads.mobile.sdk.banner.BannerAd
+import com.google.android.libraries.ads.mobile.sdk.banner.BannerAdEventCallback
+import com.google.android.libraries.ads.mobile.sdk.banner.BannerAdRequest
+import com.google.android.libraries.ads.mobile.sdk.common.AdLoadCallback
+import com.google.android.libraries.ads.mobile.sdk.common.FullScreenContentError
+import com.google.android.libraries.ads.mobile.sdk.common.LoadAdError
 import org.json.JSONObject
 
 enum class AdSizeType {
-    BANNER, LARGE_BANNER, MEDIUM_RECTANGLE, FULL_BANNER, LEADERBOARD, SMART_BANNER;
+    BANNER, LARGE_BANNER, MEDIUM_RECTANGLE, FULL_BANNER, LEADERBOARD;
 
     companion object {
         fun getAdSize(adSize: Int): AdSize? {
-            return when (values()[adSize]) {
+            return when (entries.getOrNull(adSize)) {
                 BANNER -> AdSize.BANNER
                 LARGE_BANNER -> AdSize.LARGE_BANNER
                 MEDIUM_RECTANGLE -> AdSize.MEDIUM_RECTANGLE
                 FULL_BANNER -> AdSize.FULL_BANNER
                 LEADERBOARD -> AdSize.LEADERBOARD
-                SMART_BANNER -> AdSize.SMART_BANNER
                 else -> null
             }
         }
@@ -56,7 +60,7 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
     private var mAdViewOld: AdView? = null
 
     override val isLoaded: Boolean
-        get() = mAdView != null
+        get() = mAdView?.getBannerAd() != null
 
     init {
         adSize = buildAdSize(initOpts, ctx.activity)
@@ -68,47 +72,61 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
         if (mAdView == null) {
             mAdView = createBannerView()
         }
-        mAdView!!.loadAd(adRequest)
+        loadBannerView(mAdView!!)
         ctx.resolve()
     }
 
     private fun createBannerView(): AdView {
-        val adView = AdView(plugin.activity)
-        adView.adUnitId = adUnitId
-        adView.setAdSize(adSize)
-        adView.adListener = object : AdListener() {
-            override fun onAdClicked() {
-                emit(Events.AD_CLICK)
-            }
+        return AdView(plugin.activity)
+    }
 
-            override fun onAdClosed() {
-                emit(Events.AD_DISMISS)
+    private fun loadBannerView(adView: AdView) {
+        val requestBuilder = BannerAdRequest.Builder(adUnitId, adSize)
+        applyAdRequestOptions(requestBuilder, initOpts)
+        adView.loadAd(requestBuilder.build(), object : AdLoadCallback<BannerAd> {
+            override fun onAdLoaded(ad: BannerAd) {
+                ad.adEventCallback = object : BannerAdEventCallback {
+                    override fun onAdClicked() {
+                        emit(Events.AD_CLICK)
+                    }
+
+                    override fun onAdDismissedFullScreenContent() {
+                        emit(Events.AD_DISMISS)
+                    }
+
+                    override fun onAdImpression() {
+                        emit(Events.AD_IMPRESSION)
+                    }
+
+                    override fun onAdShowedFullScreenContent() {
+                        emit(Events.AD_SHOW)
+                    }
+
+                    override fun onAdFailedToShowFullScreenContent(error: FullScreenContentError) {
+                        emit(Events.AD_SHOW_FAIL, error)
+                    }
+                }
+                // Next-Gen delivers callbacks on a background thread; view mutations stay on the UI thread.
+                plugin.activity.runOnUiThread {
+                    if (adView !== mAdView) {
+                        removeBannerView(adView)
+                        return@runOnUiThread
+                    }
+                    if (mAdViewOld != null) {
+                        removeBannerView(mAdViewOld!!)
+                        mAdViewOld = null
+                    }
+                    runJustBeforeBeingDrawn(adView) {
+                        emit(Events.BANNER_SIZE, computeAdSize())
+                    }
+                    emit(Events.AD_LOAD, computeAdSize())
+                }
             }
 
             override fun onAdFailedToLoad(error: LoadAdError) {
                 emit(Events.AD_LOAD_FAIL, error)
             }
-
-            override fun onAdImpression() {
-                emit(Events.AD_IMPRESSION)
-            }
-
-            override fun onAdLoaded() {
-                if (mAdViewOld != null) {
-                    removeBannerView(mAdViewOld!!)
-                    mAdViewOld = null
-                }
-                runJustBeforeBeingDrawn(adView) {
-                    emit(Events.BANNER_SIZE, computeAdSize())
-                }
-                emit(Events.AD_LOAD, computeAdSize())
-            }
-
-            override fun onAdOpened() {
-                emit(Events.AD_SHOW)
-            }
-        }
-        return adView
+        })
     }
 
     private fun computeAdSize(): Map<String, Any> {
@@ -128,7 +146,6 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
         if (mAdView!!.parent == null) {
             addBannerView()
         } else if (mAdView!!.visibility == View.GONE) {
-            mAdView!!.resume()
             mAdView!!.visibility = View.VISIBLE
         } else {
             val wvParentView = getParentView(webView)
@@ -142,7 +159,6 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
 
     override fun hide(ctx: ExecuteContext) {
         if (mAdView != null) {
-            mAdView!!.pause()
             mAdView!!.visibility = View.GONE
         }
         ctx.resolve()
@@ -159,34 +175,11 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
 
     private fun reloadBannerView() {
         if (mAdView == null || mAdView!!.visibility == View.GONE) return
-        pauseBannerViews()
         if (mAdViewOld != null) removeBannerView(mAdViewOld!!)
         mAdViewOld = mAdView
         mAdView = createBannerView()
-        mAdView!!.loadAd(adRequest)
+        loadBannerView(mAdView!!)
         addBannerView()
-    }
-
-    override fun onPause(multitasking: Boolean) {
-        pauseBannerViews()
-        super.onPause(multitasking)
-    }
-
-    private fun pauseBannerViews() {
-        if (mAdView != null) mAdView!!.pause()
-        if (mAdViewOld != null && mAdViewOld != mAdView) {
-            mAdViewOld!!.pause()
-        }
-    }
-
-    override fun onResume(multitasking: Boolean) {
-        super.onResume(multitasking)
-        resumeBannerViews()
-    }
-
-    private fun resumeBannerViews() {
-        if (mAdView != null) mAdView!!.resume()
-        if (mAdViewOld != null) mAdViewOld!!.resume()
     }
 
     override fun onDestroy() {
@@ -294,24 +287,6 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
 
     private val isPositionTop: Boolean
         get() = gravity == Gravity.TOP
-
-    enum class AdSizeType {
-        BANNER, LARGE_BANNER, MEDIUM_RECTANGLE, FULL_BANNER, LEADERBOARD, SMART_BANNER;
-
-        companion object {
-            fun getAdSize(adSize: Int): AdSize? {
-                return when (values()[adSize]) {
-                    BANNER -> AdSize.BANNER
-                    LARGE_BANNER -> AdSize.LARGE_BANNER
-                    MEDIUM_RECTANGLE -> AdSize.MEDIUM_RECTANGLE
-                    FULL_BANNER -> AdSize.FULL_BANNER
-                    LEADERBOARD -> AdSize.LEADERBOARD
-                    SMART_BANNER -> AdSize.SMART_BANNER
-                    else -> null
-                }
-            }
-        }
-    }
 
     companion object {
         private const val TAG = "AdMobPlus.Banner"

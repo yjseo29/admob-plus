@@ -3,6 +3,30 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# Unreleased
+
+### BREAKING CHANGES
+
+* **cordova/android:** migrate from Google Mobile Ads SDK (Legacy) 24.2.0 to GMA Next-Gen SDK 1.2.1
+* **cordova/android:** require Cordova Android 14.0.0 or newer, Android minSdk 24, compileSdk 35, and Kotlin 1.9 or newer
+* **cordova/android:** replace the `PLAY_SERVICES_VERSION` preference with `GMA_NEXT_GEN_VERSION`, which defaults to `1.2.1`
+* **cordova/android:** remove the deprecated `AdSizeType.SMART_BANNER`; use an anchored adaptive banner instead
+* **cordova/android:** remove `tagForChildDirectedTreatment` and `tagForUnderAgeOfConsent`; use `ageRestrictedTreatment` with `child`, `teen`, or `unspecified`
+* **cordova/android:** remove the deprecated `sameAppKey`; use `publisherFirstPartyIDEnabled` instead
+
+### Bug Fixes
+
+* **cordova/android:** convert physical pixels to density-independent pixels using the device density
+* **cordova/android:** treat custom banner `width`, `height`, and `maxHeight` values as density-independent pixels
+* **cordova/android:** release banner, interstitial, rewarded, rewarded interstitial, app open, and native ad resources with the Next-Gen lifecycle APIs
+
+### Features
+
+* **cordova/android:** initialize GMA Next-Gen on a background worker thread with `InitializationConfig`
+* **cordova/android:** use the Next-Gen request, callback, error, banner, interstitial, rewarded, app open, and native ad APIs while preserving the existing Cordova JavaScript bridge
+* **cordova/android:** use a large anchored adaptive banner as the default banner size
+* **cordova/android:** globally exclude transitive Legacy `play-services-ads` and `play-services-ads-lite` dependencies for mediation compatibility
+
 # [2.0.0-alpha.19](https://github.com/admob-plus/admob-plus/compare/admob-plus-cordova@2.0.0-alpha.18...admob-plus-cordova@2.0.0-alpha.19) (2024-11-15)
 
 ### Features

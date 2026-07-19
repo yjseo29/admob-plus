@@ -9,7 +9,6 @@ export enum AdSizeType {
   MEDIUM_RECTANGLE = 2,
   FULL_BANNER = 3,
   LEADERBOARD = 4,
-  SMART_BANNER = 5,
 }
 
 const colorToRGBA = (() => {
@@ -67,7 +66,7 @@ export class BannerAd extends MobileAd<BannerAdOptions> {
   constructor(opts: BannerAdOptions) {
     super({
       position: "bottom",
-      size: AdSizeType.SMART_BANNER,
+      size: { adaptive: "anchored" },
       ...opts,
     });
   }

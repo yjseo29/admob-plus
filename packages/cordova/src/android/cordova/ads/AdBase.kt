@@ -5,10 +5,12 @@ import admob.plus.cordova.ExecuteContext
 import admob.plus.cordova.ads
 import admob.plus.core.buildAdRequest
 import android.content.res.Configuration
+import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
-import com.google.android.gms.ads.AdError
-import com.google.android.gms.ads.rewarded.RewardItem
+import com.google.android.libraries.ads.mobile.sdk.common.FullScreenContentError
+import com.google.android.libraries.ads.mobile.sdk.common.LoadAdError
+import com.google.android.libraries.ads.mobile.sdk.rewarded.RewardItem
 import org.apache.cordova.CordovaWebView
 import org.json.JSONObject
 
@@ -27,7 +29,7 @@ abstract class AdBase(ctx: ExecuteContext) {
 
     val id: String get() = initOpts.getString("id")
     val adUnitId: String get() = initOpts.getString("adUnitId")
-    val adRequest get() = buildAdRequest(initOpts)
+    val adRequest get() = buildAdRequest(adUnitId, initOpts)
 
     protected val plugin = ctx.plugin
 
@@ -68,15 +70,25 @@ abstract class AdBase(ctx: ExecuteContext) {
     }
 
     fun emit(eventName: String, data: Map<String, Any?> = mapOf()) {
-        plugin.emit(eventName, mapOf("adId" to id) + data)
+        val action = { plugin.emit(eventName, mapOf("adId" to id) + data) }
+        if (Looper.myLooper() == Looper.getMainLooper()) action()
+        else plugin.activity.runOnUiThread(action)
     }
 
-    fun emit(eventName: String, error: AdError) {
+    fun emit(eventName: String, error: LoadAdError) {
         emit(
             eventName, mapOf(
-                "code" to error.code,
+                "code" to error.code.value,
                 "message" to error.message,
-                "cause" to error.cause,
+            )
+        )
+    }
+
+    fun emit(eventName: String, error: FullScreenContentError) {
+        emit(
+            eventName, mapOf(
+                "code" to error.code.value,
+                "message" to error.message,
             )
         )
     }

@@ -2,16 +2,14 @@ package admob.plus.cordova.ads
 
 import admob.plus.cordova.Events
 import admob.plus.cordova.ExecuteContext
-import admob.plus.core.buildAdRequest
-import com.google.android.gms.ads.AdError
-import com.google.android.gms.ads.AdRequest
-import com.google.android.gms.ads.FullScreenContentCallback
-import com.google.android.gms.ads.LoadAdError
-import com.google.android.gms.ads.appopen.AppOpenAd
-import com.google.android.gms.ads.appopen.AppOpenAd.AppOpenAdLoadCallback
+import com.google.android.libraries.ads.mobile.sdk.appopen.AppOpenAd
+import com.google.android.libraries.ads.mobile.sdk.appopen.AppOpenAdEventCallback
+import com.google.android.libraries.ads.mobile.sdk.common.AdLoadCallback
+import com.google.android.libraries.ads.mobile.sdk.common.FullScreenContentError
+import com.google.android.libraries.ads.mobile.sdk.common.LoadAdError
 
 class AppOpen(ctx: ExecuteContext) : AdBase(ctx) {
-    private val mAdRequest: AdRequest = buildAdRequest(initOpts)
+    @Volatile
     private var mAd: AppOpenAd? = null
 
     override fun onDestroy() {
@@ -21,29 +19,34 @@ class AppOpen(ctx: ExecuteContext) : AdBase(ctx) {
 
     override fun load(ctx: ExecuteContext) {
         clear()
-        AppOpenAd.load(plugin.activity,
-            adUnitId,
-            mAdRequest,
-            object : AppOpenAdLoadCallback() {
+        AppOpenAd.load(
+            adRequest,
+            object : AdLoadCallback<AppOpenAd> {
                 override fun onAdLoaded(ad: AppOpenAd) {
                     mAd = ad
-                    ad.fullScreenContentCallback = object : FullScreenContentCallback() {
+                    ad.adEventCallback = object : AppOpenAdEventCallback {
                         override fun onAdDismissedFullScreenContent() {
-                            clear()
+                            ad.destroy()
                             emit(Events.AD_DISMISS)
                         }
 
-                        override fun onAdFailedToShowFullScreenContent(adError: AdError) {
-                            clear()
+                        override fun onAdFailedToShowFullScreenContent(adError: FullScreenContentError) {
+                            mAd = null
+                            ad.destroy()
                             emit(Events.AD_SHOW_FAIL, adError)
                         }
 
                         override fun onAdShowedFullScreenContent() {
+                            mAd = null
                             emit(Events.AD_SHOW)
                         }
 
                         override fun onAdImpression() {
                             emit(Events.AD_IMPRESSION)
+                        }
+
+                        override fun onAdClicked() {
+                            emit(Events.AD_CLICK)
                         }
                     }
                     emit(Events.AD_LOAD)
@@ -66,8 +69,7 @@ class AppOpen(ctx: ExecuteContext) : AdBase(ctx) {
     }
 
     private fun clear() {
-        if (mAd != null) {
-            mAd = null
-        }
+        mAd?.destroy()
+        mAd = null
     }
 }
