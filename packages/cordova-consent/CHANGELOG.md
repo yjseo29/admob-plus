@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# Unreleased
+
+### BREAKING CHANGES
+
+* **cordova-consent/android:** update Google User Messaging Platform SDK to 4.0.0 and require Android API level 23 or newer
+* **cordova-consent/ios:** update Google User Messaging Platform SDK to 3.1.0 and require Cordova iOS 6.0.0 and Xcode 16.0 or newer
+
+### Bug Fixes
+
+* **cordova-consent/docs:** request fresh consent information before reading consent status or loading a required form
+* **cordova-consent/docs:** run the UMP consent flow before requesting App Tracking Transparency authorization on iOS
+
+### Features
+
+* **cordova-consent/ios:** migrate the native Swift bridge to the UMP 3.x class and property names
+* **cordova-consent/ios:** add `UMP_IOS_VERSION` to configure the CocoaPods dependency during plugin installation
+
 # [3.0.0-alpha.9](https://github.com/admob-plus/admob-plus/compare/cordova-plugin-consent@3.0.0-alpha.8...cordova-plugin-consent@3.0.0-alpha.9) (2024-11-15)
 
 ### Features

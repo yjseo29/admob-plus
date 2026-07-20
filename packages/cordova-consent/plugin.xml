@@ -7,8 +7,12 @@
         <clobbers target="consent" />
     </js-module>
 
+    <engines>
+        <engine name="cordova-ios" version=">=6.0.0" />
+    </engines>
+
     <platform name="android">
-        <preference name="UMP_VERSION" default="3.2.0" />
+        <preference name="UMP_VERSION" default="4.0.0" />
 
         <config-file target="res/xml/config.xml" parent="/*">
             <feature name="Consent">
@@ -24,6 +28,10 @@
     </platform>
 
     <platform name="ios">
+        <!-- Keep this separate from Android's UMP_VERSION because the SDK version lines differ. -->
+        <!-- Cordova iOS 6+ replaces a variable only when it is the complete pod spec. -->
+        <preference name="UMP_IOS_VERSION" default="3.1.0" />
+
         <config-file target="config.xml" parent="/*">
             <feature name="Consent">
                 <param name="ios-package" value="CSNConsent" />
@@ -41,7 +49,7 @@
                 <source url="https://cdn.cocoapods.org/" />
             </config>
             <pods use-frameworks="true">
-                <pod name="GoogleUserMessagingPlatform" spec="~> 2.5.0" />
+                <pod name="GoogleUserMessagingPlatform" spec="$UMP_IOS_VERSION" />
             </pods>
         </podspec>
     </platform>
