@@ -8,6 +8,24 @@
 
 Google Consent SDK Cordova Plugin
 
+## Install this GitHub prerelease
+
+The packaged prerelease includes the generated JavaScript files and the native
+Android and iOS source files. It does not require pnpm or a local build:
+
+```shell
+cordova plugin add "https://github.com/yjseo29/admob-plus/releases/download/cordova-plugin-consent-v4.0.0-alpha.0/cordova-plugin-consent-4.0.0-alpha.0.tgz"
+```
+
+The default UMP SDK versions can be overridden during installation:
+
+```shell
+cordova plugin add "https://github.com/yjseo29/admob-plus/releases/download/cordova-plugin-consent-v4.0.0-alpha.0/cordova-plugin-consent-4.0.0-alpha.0.tgz" --variable UMP_VERSION="4.0.0" --variable UMP_IOS_VERSION="3.1.0"
+```
+
+The tarball is only the download format. Cordova extracts it and installs the
+normal plugin directory, including `plugin.xml`, `src`, `www`, `lib`, and `esm`.
+
 ## Platform requirements
 
 - Android API level 23 or newer

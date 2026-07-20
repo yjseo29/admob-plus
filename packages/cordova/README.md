@@ -13,6 +13,25 @@ AdMob Plus Cordova is the successor of [cordova-plugin-admob-free](https://githu
 
 You can find the documentation [on the website](https://admob-plus.github.io/docs/cordova).
 
+## Install this GitHub prerelease
+
+The packaged prerelease includes the generated JavaScript files and the native
+Android and iOS source files. It does not require pnpm or a local build:
+
+```shell
+cordova plugin add "https://github.com/yjseo29/admob-plus/releases/download/admob-plus-cordova-v3.0.0-alpha.0/admob-plus-cordova-3.0.0-alpha.0.tgz"
+```
+
+Application IDs and SDK versions can still be supplied as Cordova plugin
+variables. For example:
+
+```shell
+cordova plugin add "https://github.com/yjseo29/admob-plus/releases/download/admob-plus-cordova-v3.0.0-alpha.0/admob-plus-cordova-3.0.0-alpha.0.tgz" --variable APP_ID_ANDROID="ca-app-pub-xxx~yyy" --variable APP_ID_IOS="ca-app-pub-xxx~yyy"
+```
+
+The tarball is only the download format. Cordova extracts it and installs the
+normal plugin directory, including `plugin.xml`, `src`, `www`, `lib`, and `esm`.
+
 ## Features
 
 - App Open Ads

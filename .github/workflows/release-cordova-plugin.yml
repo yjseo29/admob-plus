@@ -1,0 +1,108 @@
+name: Release Cordova plugin package
+
+on:
+  push:
+    tags:
+      - "admob-plus-cordova-v*"
+      - "cordova-plugin-consent-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  package-and-release:
+    name: Package and publish ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the tagged source
+        uses: actions/checkout@v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          package-manager-cache: false
+
+      - name: Select and validate the package
+        id: package
+        shell: bash
+        run: |
+          case "$GITHUB_REF_NAME" in
+            admob-plus-cordova-v*)
+              package_name="admob-plus-cordova"
+              package_dir="packages/cordova"
+              entrypoint="admob.js"
+              ;;
+            cordova-plugin-consent-v*)
+              package_name="cordova-plugin-consent"
+              package_dir="packages/cordova-consent"
+              entrypoint="consent.js"
+              ;;
+            *)
+              echo "Unsupported release tag: $GITHUB_REF_NAME" >&2
+              exit 1
+              ;;
+          esac
+
+          version="$(node -p "require('./${package_dir}/package.json').version")"
+          expected_tag="${package_name}-v${version}"
+
+          if [[ "$GITHUB_REF_NAME" != "$expected_tag" ]]; then
+            echo "Tag $GITHUB_REF_NAME does not match package version $expected_tag." >&2
+            exit 1
+          fi
+
+          echo "name=$package_name" >> "$GITHUB_OUTPUT"
+          echo "dir=$package_dir" >> "$GITHUB_OUTPUT"
+          echo "entrypoint=$entrypoint" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Build the plugin package
+        run: pnpm --filter "${{ steps.package.outputs.name }}" build
+
+      - name: Create and verify the package tarball
+        id: tarball
+        shell: bash
+        run: |
+          mkdir -p release-artifacts
+          npm pack "./${{ steps.package.outputs.dir }}" \
+            --pack-destination release-artifacts \
+            --ignore-scripts
+
+          asset="release-artifacts/${{ steps.package.outputs.name }}-${{ steps.package.outputs.version }}.tgz"
+          test -f "$asset"
+
+          tar -tzf "$asset" > package-contents.txt
+          grep -Fxq "package/package.json" package-contents.txt
+          grep -Fxq "package/plugin.xml" package-contents.txt
+          grep -Fxq "package/www/${{ steps.package.outputs.entrypoint }}" package-contents.txt
+          grep -q "^package/src/" package-contents.txt
+
+          echo "asset=$asset" >> "$GITHUB_OUTPUT"
+
+      - name: Create the GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          tag="$GITHUB_REF_NAME"
+          asset="${{ steps.tarball.outputs.asset }}"
+          title="${{ steps.package.outputs.name }} ${{ steps.package.outputs.version }}"
+          notes="Pre-release Cordova plugin package built from tag \`${tag}\`."
+
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$asset" --clobber
+          else
+            gh release create "$tag" "$asset" \
+              --verify-tag \
+              --prerelease \
+              --title "$title" \
+              --notes "$notes"
+          fi
