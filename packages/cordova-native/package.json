@@ -12,7 +12,7 @@
     "test": "tsc --noEmit"
   },
   "dependencies": {
-    "admob-plus-cordova": "^2.0.0-alpha.19"
+    "admob-plus-cordova": "workspace:^3.0.0-alpha.0"
   },
   "devDependencies": {
     "@types/cordova": "^11.0.3",

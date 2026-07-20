@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-# Unreleased
+# [4.0.0-alpha.0](https://github.com/admob-plus/admob-plus/compare/cordova-plugin-consent@3.0.0-alpha.9...cordova-plugin-consent@4.0.0-alpha.0) (2026-07-20)
 
 ### BREAKING CHANGES
 

@@ -1025,8 +1025,8 @@ importers:
   packages/cordova-native:
     dependencies:
       admob-plus-cordova:
-        specifier: ^2.0.0-alpha.19
-        version: 2.0.0-alpha.19
+        specifier: workspace:^3.0.0-alpha.0
+        version: link:../cordova
     devDependencies:
       '@types/cordova':
         specifier: ^11.0.3
@@ -1047,8 +1047,8 @@ importers:
   packages/cordova-webview-ad:
     dependencies:
       admob-plus-cordova:
-        specifier: ^2.0.0-alpha.19
-        version: 2.0.0-alpha.19
+        specifier: workspace:^3.0.0-alpha.0
+        version: link:../cordova
     devDependencies:
       cordova-plus:
         specifier: ^0.9.4
@@ -6776,9 +6776,6 @@ packages:
   adm-zip@0.5.16:
     resolution: {integrity: sha512-TGw5yVi4saajsSEgz25grObGHEUaDrniwvA2qwSC060KfqGPdglhvPMA2lPIoxs3PQIItj2iag35fONcQqgUaQ==}
     engines: {node: '>=12.0'}
-
-  admob-plus-cordova@2.0.0-alpha.19:
-    resolution: {integrity: sha512-PIC/sVzN74xU6b9O4JmkKYwLxOPH5Fw0D0hCrZDw+6PIoFKXxkikvT1X6ck8kyR3kg0FYmagGnRX7vUbH0eL0w==}
 
   admob-plus@file:packages/cli:
     resolution: {directory: packages/cli, type: directory}
@@ -29555,8 +29552,6 @@ snapshots:
   adm-zip@0.4.16: {}
 
   adm-zip@0.5.16: {}
-
-  admob-plus-cordova@2.0.0-alpha.19: {}
 
   admob-plus@file:packages/cli:
     dependencies:
