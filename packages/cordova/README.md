@@ -16,17 +16,14 @@ You can find the documentation [on the website](https://admob-plus.github.io/doc
 ## Install this GitHub prerelease
 
 The packaged prerelease includes the generated JavaScript files and the native
-Android and iOS source files. It does not require pnpm or a local build:
+Android and iOS source files. It does not require pnpm or a local build.
+
+Both application IDs are required. The SDK version variables below match this
+prerelease's default versions and can be changed when a compatible SDK version
+is required:
 
 ```shell
-cordova plugin add "https://github.com/yjseo29/admob-plus/releases/download/admob-plus-cordova-v3.0.0-alpha.0/admob-plus-cordova-3.0.0-alpha.0.tgz"
-```
-
-Application IDs and SDK versions can still be supplied as Cordova plugin
-variables. For example:
-
-```shell
-cordova plugin add "https://github.com/yjseo29/admob-plus/releases/download/admob-plus-cordova-v3.0.0-alpha.0/admob-plus-cordova-3.0.0-alpha.0.tgz" --variable APP_ID_ANDROID="ca-app-pub-xxx~yyy" --variable APP_ID_IOS="ca-app-pub-xxx~yyy"
+cordova plugin add "https://github.com/yjseo29/admob-plus/releases/download/admob-plus-cordova-v3.0.0-alpha.0/admob-plus-cordova-3.0.0-alpha.0.tgz" --variable APP_ID_ANDROID="ca-app-pub-xxx~yyy" --variable APP_ID_IOS="ca-app-pub-xxx~yyy" --variable GMA_NEXT_GEN_VERSION="1.2.1" --variable GMA_IOS_VERSION="13.6.0"
 ```
 
 The tarball is only the download format. Cordova extracts it and installs the
