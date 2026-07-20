@@ -33,9 +33,9 @@ Android applications can migrate directly from the previous 24.2.0 dependency.
 
 Android requirements:
 
-- Cordova Android 14.0.0 or newer
+- Cordova Android 13.0.0 or newer
 - Android `minSdk` 24 or newer
-- Android `compileSdk` 35 or newer
+- Android `compileSdk` 34 or newer
 - Kotlin 1.9 or newer
 
 The Android SDK version preference was renamed from `PLAY_SERVICES_VERSION` to

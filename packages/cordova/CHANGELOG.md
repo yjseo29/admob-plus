@@ -8,7 +8,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 ### BREAKING CHANGES
 
 * **cordova/android:** migrate from Google Mobile Ads SDK (Legacy) 24.2.0 to GMA Next-Gen SDK 1.2.1
-* **cordova/android:** require Cordova Android 14.0.0 or newer, Android minSdk 24, compileSdk 35, and Kotlin 1.9 or newer
+* **cordova/android:** require Cordova Android 13.0.0 or newer, Android minSdk 24, compileSdk 34, and Kotlin 1.9 or newer
 * **cordova/android:** replace the `PLAY_SERVICES_VERSION` preference with `GMA_NEXT_GEN_VERSION`, which defaults to `1.2.1`
 * **cordova/android:** remove the deprecated `AdSizeType.SMART_BANNER`; use an anchored adaptive banner instead
 * **cordova/android:** remove `tagForChildDirectedTreatment` and `tagForUnderAgeOfConsent`; use `ageRestrictedTreatment` with `child`, `teen`, or `unspecified`
