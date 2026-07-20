@@ -37,7 +37,7 @@ class AMBBannerStackView: UIStackView {
     }
 }
 
-class AMBBanner: AMBAdBase, GADBannerViewDelegate, GADAdSizeDelegate {
+class AMBBanner: AMBAdBase, BannerViewDelegate, AdSizeDelegate {
     static let stackView = AMBBannerStackView.shared
 
     static let priortyLeast = UILayoutPriority(10)
@@ -54,7 +54,9 @@ class AMBBanner: AMBAdBase, GADBannerViewDelegate, GADAdSizeDelegate {
     }
 
     static var statusBarBackgroundView: UIView? {
-        let statusBarFrame = UIApplication.shared.statusBarFrame
+        guard let statusBarFrame = rootView.window?.windowScene?.statusBarManager?.statusBarFrame else {
+            return nil
+        }
         return rootView.subviews.first(where: { $0.frame.equalTo(statusBarFrame) })
     }
 
@@ -121,13 +123,13 @@ class AMBBanner: AMBAdBase, GADBannerViewDelegate, GADAdSizeDelegate {
         AMBBannerStackView.bottomConstraint.isActive = stackView.hasBottomBanner
     }
 
-    let adSize: GADAdSize!
+    let adSize: AdSize!
     let position: String!
     let offset: CGFloat?
-    var bannerView: GADBannerView!
+    var bannerView: BannerView!
     let placeholder = AMBBannerPlaceholder()
 
-    init(id: String, adUnitId: String, adSize: GADAdSize, adRequest: GADRequest, position: String, offset: CGFloat?) {
+    init(id: String, adUnitId: String, adSize: AdSize, adRequest: Request, position: String, offset: CGFloat?) {
         self.adSize = adSize
         self.position = position
         self.offset = offset
@@ -144,7 +146,7 @@ class AMBBanner: AMBAdBase, GADBannerViewDelegate, GADAdSizeDelegate {
         self.init(id: id,
                   adUnitId: adUnitId,
                   adSize: ctx.optAdSize(),
-                  adRequest: ctx.optGADRequest(),
+                  adRequest: ctx.optAdRequest(),
                   position: ctx.optPosition(),
                   offset: ctx.optOffset())
     }
@@ -165,7 +167,7 @@ class AMBBanner: AMBAdBase, GADBannerViewDelegate, GADAdSizeDelegate {
 
     override func load(_ ctx: AMBContext) {
         if bannerView == nil {
-            bannerView = GADBannerView(adSize: self.adSize)
+            bannerView = BannerView(adSize: self.adSize)
             bannerView.delegate = self
             bannerView.adSizeDelegate = self
             bannerView.rootViewController = plugin.viewController
@@ -217,7 +219,7 @@ class AMBBanner: AMBAdBase, GADBannerViewDelegate, GADAdSizeDelegate {
         ctx.resolve()
     }
 
-    func bannerViewDidReceiveAd(_ bannerView: GADBannerView) {
+    func bannerViewDidReceiveAd(_ bannerView: BannerView) {
         self.emit(AMBEvents.adLoad, [
             "size": [
                 "width": bannerView.frame.size.width,
@@ -237,31 +239,31 @@ class AMBBanner: AMBAdBase, GADBannerViewDelegate, GADAdSizeDelegate {
         ])
     }
 
-    func bannerView(_ bannerView: GADBannerView,
+    func bannerView(_ bannerView: BannerView,
                     didFailToReceiveAdWithError error: Error) {
         self.emit(AMBEvents.adLoadFail, error)
     }
 
-    func bannerViewDidRecordImpression(_ bannerView: GADBannerView) {
+    func bannerViewDidRecordImpression(_ bannerView: BannerView) {
         self.emit(AMBEvents.adImpression)
     }
 
-    func bannerViewDidRecordClick(_ bannerView: GADBannerView) {
+    func bannerViewDidRecordClick(_ bannerView: BannerView) {
         self.emit(AMBEvents.adClick)
     }
 
-    func bannerViewWillPresentScreen(_ bannerView: GADBannerView) {
+    func bannerViewWillPresentScreen(_ bannerView: BannerView) {
         self.emit(AMBEvents.adShow)
     }
 
-    func bannerViewWillDismissScreen(_ bannerView: GADBannerView) {
+    func bannerViewWillDismissScreen(_ bannerView: BannerView) {
     }
 
-    func bannerViewDidDismissScreen(_ bannerView: GADBannerView) {
+    func bannerViewDidDismissScreen(_ bannerView: BannerView) {
         self.emit(AMBEvents.adDismiss)
     }
 
-    func adView(_ bannerView: GADBannerView, willChangeAdSizeTo size: GADAdSize) {
+    func adView(_ bannerView: BannerView, willChangeAdSizeTo size: AdSize) {
         self.emit(AMBEvents.bannerSizeChange, size)
     }
 

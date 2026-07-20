@@ -10,7 +10,7 @@
     <engines>
         <engine name="cordova" version=">=7.0.0" />
         <engine name="cordova-android" version=">=13.0.0" />
-        <engine name="cordova-ios" version=">=5.0.0" />
+        <engine name="cordova-ios" version=">=6.0.0" />
     </engines>
 
     <platform name="android">
@@ -52,6 +52,9 @@
         <preference name="APP_ID_IOS" default="ca-app-pub-xxx~yyy" />
         <preference name="USAGE" default="This identifier will be used to deliver personalized ads to you." />
         <preference name="disableSDKCrashReporting" default="false" />
+        <!-- Keep this separate from Android's GMA_NEXT_GEN_VERSION because the platforms use independent SDK version lines. -->
+        <!-- Cordova iOS 6+ replaces a plugin variable when it is the complete pod spec. -->
+        <preference name="GMA_IOS_VERSION" default="13.6.0" />
 
         <config-file target="config.xml" parent="/*">
             <feature name="AdMob">
@@ -134,7 +137,15 @@
                 </dict>
                 <dict>
                     <key>SKAdNetworkIdentifier</key>
+                    <string>wg4vff78zm.skadnetwork</string>
+                </dict>
+                <dict>
+                    <key>SKAdNetworkIdentifier</key>
                     <string>3qy4746246.skadnetwork</string>
+                </dict>
+                <dict>
+                    <key>SKAdNetworkIdentifier</key>
+                    <string>f38h382jlk.skadnetwork</string>
                 </dict>
                 <dict>
                     <key>SKAdNetworkIdentifier</key>
@@ -159,6 +170,10 @@
                 <dict>
                     <key>SKAdNetworkIdentifier</key>
                     <string>yclnxrl5pm.skadnetwork</string>
+                </dict>
+                <dict>
+                    <key>SKAdNetworkIdentifier</key>
+                    <string>t38b2kh725.skadnetwork</string>
                 </dict>
                 <dict>
                     <key>SKAdNetworkIdentifier</key>
@@ -206,6 +221,14 @@
                 </dict>
                 <dict>
                     <key>SKAdNetworkIdentifier</key>
+                    <string>44jx6755aq.skadnetwork</string>
+                </dict>
+                <dict>
+                    <key>SKAdNetworkIdentifier</key>
+                    <string>k674qkevps.skadnetwork</string>
+                </dict>
+                <dict>
+                    <key>SKAdNetworkIdentifier</key>
                     <string>4468km3ulz.skadnetwork</string>
                 </dict>
                 <dict>
@@ -218,15 +241,19 @@
                 </dict>
                 <dict>
                     <key>SKAdNetworkIdentifier</key>
+                    <string>klf5c3l5u5.skadnetwork</string>
+                </dict>
+                <dict>
+                    <key>SKAdNetworkIdentifier</key>
                     <string>ppxm28t8ap.skadnetwork</string>
                 </dict>
                 <dict>
                     <key>SKAdNetworkIdentifier</key>
-                    <string>uw77j35x4d.skadnetwork</string>
+                    <string>kbmxgpxpgc.skadnetwork</string>
                 </dict>
                 <dict>
                     <key>SKAdNetworkIdentifier</key>
-                    <string>pwa73g5rt2.skadnetwork</string>
+                    <string>uw77j35x4d.skadnetwork</string>
                 </dict>
                 <dict>
                     <key>SKAdNetworkIdentifier</key>
@@ -242,6 +269,10 @@
                 </dict>
                 <dict>
                     <key>SKAdNetworkIdentifier</key>
+                    <string>c3frkrj4fj.skadnetwork</string>
+                </dict>
+                <dict>
+                    <key>SKAdNetworkIdentifier</key>
                     <string>e5fvkxwrpn.skadnetwork</string>
                 </dict>
                 <dict>
@@ -251,6 +282,10 @@
                 <dict>
                     <key>SKAdNetworkIdentifier</key>
                     <string>3rd42ekr43.skadnetwork</string>
+                </dict>
+                <dict>
+                    <key>SKAdNetworkIdentifier</key>
+                    <string>97r2b46745.skadnetwork</string>
                 </dict>
                 <dict>
                     <key>SKAdNetworkIdentifier</key>
@@ -280,7 +315,7 @@
                 <source url="https://cdn.cocoapods.org/" />
             </config>
             <pods use-frameworks="true">
-                <pod name="Google-Mobile-Ads-SDK" spec="~> 12.3" />
+                <pod name="Google-Mobile-Ads-SDK" spec="$GMA_IOS_VERSION" />
             </pods>
         </podspec>
     </platform>

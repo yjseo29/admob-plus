@@ -1,7 +1,7 @@
 import GoogleMobileAds
 
-class AMBInterstitial: AMBAdBase, GADFullScreenContentDelegate {
-    var mAd: GADInterstitialAd?
+class AMBInterstitial: AMBAdBase, FullScreenContentDelegate {
+    var mAd: InterstitialAd?
 
     deinit {
         clear()
@@ -14,44 +14,40 @@ class AMBInterstitial: AMBAdBase, GADFullScreenContentDelegate {
     override func load(_ ctx: AMBContext) {
         clear()
 
-        GADInterstitialAd.load(
-            withAdUnitID: adUnitId,
-            request: adRequest,
-            completionHandler: { ad, error in
-                if error != nil {
-                    self.emit(AMBEvents.adLoadFail, error!)
-                    ctx.reject(error!)
-                    return
-                }
-
+        Task { @MainActor in
+            do {
+                let ad = try await InterstitialAd.load(with: self.adUnitId, request: self.adRequest)
                 self.mAd = ad
-                ad?.fullScreenContentDelegate = self
+                ad.fullScreenContentDelegate = self
 
                 self.emit(AMBEvents.adLoad)
-
                 ctx.resolve()
-         })
+            } catch {
+                self.emit(AMBEvents.adLoadFail, error)
+                ctx.reject(error)
+            }
+        }
     }
 
     override func show(_ ctx: AMBContext) {
-        mAd?.present(fromRootViewController: plugin.viewController)
+        mAd?.present(from: plugin.viewController)
         ctx.resolve()
     }
 
-    func adDidRecordImpression(_ ad: GADFullScreenPresentingAd) {
+    func adDidRecordImpression(_ ad: FullScreenPresentingAd) {
         self.emit(AMBEvents.adImpression)
     }
 
-    func ad(_ ad: GADFullScreenPresentingAd, didFailToPresentFullScreenContentWithError error: Error) {
+    func ad(_ ad: FullScreenPresentingAd, didFailToPresentFullScreenContentWithError error: Error) {
         clear()
         self.emit(AMBEvents.adShowFail, error)
     }
 
-    func adWillPresentFullScreenContent(_ ad: GADFullScreenPresentingAd) {
+    func adWillPresentFullScreenContent(_ ad: FullScreenPresentingAd) {
         self.emit(AMBEvents.adShow)
     }
 
-    func adDidDismissFullScreenContent(_ ad: GADFullScreenPresentingAd) {
+    func adDidDismissFullScreenContent(_ ad: FullScreenPresentingAd) {
         clear()
         self.emit(AMBEvents.adDismiss)
     }

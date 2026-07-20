@@ -14,30 +14,30 @@ extension AMBHelperAdapter {
 }
 
 class AMBHelper {
-    static let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow })!
+    static var window: UIWindow {
+        if let window = AMBContext.plugin?.viewController.view.window {
+            return window
+        }
+
+        let windows = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+        guard let window = windows.first(where: { $0.isKeyWindow }) ?? windows.first else {
+            fatalError("Unable to find an application window")
+        }
+        return window
+    }
 
     static var topAnchor: NSLayoutYAxisAnchor {
-        if #available(iOS 11.0, *) {
-            return window.safeAreaLayoutGuide.topAnchor
-        } else {
-            return window.topAnchor
-        }
+        return window.safeAreaLayoutGuide.topAnchor
     }
 
     static var bottomAnchor: NSLayoutYAxisAnchor {
-        if #available(iOS 11.0, *) {
-            return window.safeAreaLayoutGuide.bottomAnchor
-        } else {
-            return window.bottomAnchor
-        }
+        return window.safeAreaLayoutGuide.bottomAnchor
     }
 
     static var frame: CGRect {
-        if #available(iOS 11.0, *) {
-            return window.frame.inset(by: window.safeAreaInsets)
-        } else {
-            return window.frame
-        }
+        return window.frame.inset(by: window.safeAreaInsets)
     }
 
     let adapter: AMBHelperAdapter
@@ -122,27 +122,32 @@ extension AMBCoreContext {
         }
     }
 
-    func optChildDirectedTreatmentTag() -> Bool? {
-        return optBool("tagForChildDirectedTreatment")
-    }
-
-    func optUnderAgeOfConsentTag() -> Bool? {
-        return optBool("tagForUnderAgeOfConsent")
+    func optAgeRestrictedTreatment() -> AgeRestrictedTreatment? {
+        switch optString("ageRestrictedTreatment")?.lowercased() {
+        case "child":
+            return .child
+        case "teen":
+            return .teen
+        case "unspecified":
+            return .unspecified
+        default:
+            return nil
+        }
     }
 
     func optTestDeviceIds() -> [String]? {
         return optStringArray("testDeviceIds")
     }
 
-    func optGADRequest() -> GADRequest {
-        let request = GADRequest()
+    func optAdRequest() -> Request {
+        let request = Request()
         if let contentURL = optString("contentUrl") {
             request.contentURL = contentURL
         }
         if let keywords = optStringArray("keywords") {
             request.keywords = keywords
         }
-        let extras = GADExtras()
+        let extras = Extras()
         if let npa = optString("npa") {
             extras.additionalParameters = ["npa": npa]
         }
@@ -168,27 +173,21 @@ extension AMBCoreContext {
 
     func configure() {
         if let muted = optAppMuted() {
-            GADMobileAds.sharedInstance().applicationMuted = muted
+            MobileAds.shared.isApplicationMuted = muted
         }
         if let volume = optAppVolume() {
-            GADMobileAds.sharedInstance().applicationVolume = volume
+            MobileAds.shared.applicationVolume = volume
         }
 
-        let requestConfiguration = GADMobileAds.sharedInstance().requestConfiguration
+        let requestConfiguration = MobileAds.shared.requestConfiguration
         if let maxAdContentRating = optMaxAdContentRating() {
             requestConfiguration.maxAdContentRating = maxAdContentRating
         }
-        if let tag = optChildDirectedTreatmentTag() {
-            requestConfiguration.tagForChildDirectedTreatment = NSNumber(value: tag)
-        }
-        if let tag = optUnderAgeOfConsentTag() {
-            requestConfiguration.tagForUnderAgeOfConsent = NSNumber(value: tag)
+        if let ageRestrictedTreatment = optAgeRestrictedTreatment() {
+            requestConfiguration.ageRestrictedTreatment = ageRestrictedTreatment
         }
         if let testDevices = optTestDeviceIds() {
             requestConfiguration.testDeviceIdentifiers = testDevices
-        }
-        if let sameAppKey = optBool("sameAppKey") {
-            requestConfiguration.setPublisherFirstPartyIDEnabled(sameAppKey)
         }
         if let
         publisherFirstPartyIDEnabled = optBool("publisherFirstPartyIDEnabled") {
@@ -204,9 +203,9 @@ class AMBCoreAd: NSObject {
 
     let id: String
     let adUnitId: String
-    let adRequest: GADRequest
+    let adRequest: Request
 
-    init(id: String, adUnitId: String, adRequest: GADRequest) {
+    init(id: String, adUnitId: String, adRequest: Request) {
         self.id = id
         self.adUnitId = adUnitId
         self.adRequest = adRequest
@@ -222,7 +221,7 @@ class AMBCoreAd: NSObject {
         else {
             return nil
         }
-        self.init(id: id, adUnitId: adUnitId, adRequest: ctx.optGADRequest())
+        self.init(id: id, adUnitId: adUnitId, adRequest: ctx.optAdRequest())
     }
 
     deinit {

@@ -71,6 +71,43 @@ package both SDKs. The plugin excludes `play-services-ads` and
 Verify every mediation adapter used by the application against the current
 Next-Gen support matrix before releasing.
 
+## iOS Google Mobile Ads SDK 13 prerelease
+
+This branch uses [Google Mobile Ads SDK 13.6.0][ios-release-notes] on iOS while
+preserving the existing Cordova JavaScript bridge.
+
+iOS requirements:
+
+- Cordova iOS 6.0.0 or newer
+- iOS 13.0 or newer
+- Xcode 26.2 or newer
+- CocoaPods 1.16 or newer
+
+The CocoaPods version can be selected when installing the plugin and defaults
+to the exact tested version, `13.6.0`:
+
+```shell
+cordova plugin add admob-plus-cordova \
+  --variable GMA_IOS_VERSION=13.6.0
+```
+
+The Swift bridge uses the SDK 13 async loading APIs and the Swift names
+introduced in SDK 12. Anchored adaptive banners now use the SDK 13 large
+anchored adaptive size APIs. Their height can be larger than the previous
+anchored adaptive banners because the supported range increased from 50-90 to
+50-150 points.
+
+The deprecated child-directed and under-age request flags are no longer used.
+Set `ageRestrictedTreatment` to `"child"`, `"teen"`, or `"unspecified"`.
+The deprecated native `willLeaveApplication` callback is also no longer
+implemented.
+
+If Meta Audience Network mediation is used, install a current
+`GoogleMobileAdsMediationFacebook` adapter that supports Google Mobile Ads SDK
+13 and verify all requested formats on a physical device. Meta does not support
+anchored or inline adaptive banner sizes, so its banner demand requires a
+supported fixed banner size.
+
 ## Compare to other projects
 
 |              Project              |  No Ad-Sharing  |    Fully Open Sourced     |        No Remote Control        |
@@ -134,3 +171,4 @@ AdMob Plus Cordova is [MIT licensed][b6-l].
 [b6]: https://img.shields.io/npm/l/admob-plus-cordova
 [b6-l]: https://github.com/admob-plus/admob-plus/blob/master/LICENSE
 [migration-guide]: https://developers.google.com/admob/android/next-gen/migration
+[ios-release-notes]: https://developers.google.com/admob/ios/rel-notes

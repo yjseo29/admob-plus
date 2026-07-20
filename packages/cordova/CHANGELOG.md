@@ -13,12 +13,17 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 * **cordova/android:** remove the deprecated `AdSizeType.SMART_BANNER`; use an anchored adaptive banner instead
 * **cordova/android:** remove `tagForChildDirectedTreatment` and `tagForUnderAgeOfConsent`; use `ageRestrictedTreatment` with `child`, `teen`, or `unspecified`
 * **cordova/android:** remove the deprecated `sameAppKey`; use `publisherFirstPartyIDEnabled` instead
+* **cordova/ios:** migrate Google Mobile Ads SDK from 12.3 to 13.6.0
+* **cordova/ios:** require Cordova iOS 6.0.0 or newer, iOS 13.0 or newer, and Xcode 26.2 or newer
+* **cordova/ios:** add the `GMA_IOS_VERSION` preference, which defaults to the exact CocoaPods version `13.6.0`
+* **cordova/ios:** use large anchored adaptive banner sizes in place of the deprecated anchored adaptive sizes
 
 ### Bug Fixes
 
 * **cordova/android:** convert physical pixels to density-independent pixels using the device density
 * **cordova/android:** treat custom banner `width`, `height`, and `maxHeight` values as density-independent pixels
 * **cordova/android:** release banner, interstitial, rewarded, rewarded interstitial, app open, and native ad resources with the Next-Gen lifecycle APIs
+* **cordova/ios:** use scene-aware window and status bar APIs required by modern iOS applications
 
 ### Features
 
@@ -26,6 +31,10 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 * **cordova/android:** use the Next-Gen request, callback, error, banner, interstitial, rewarded, app open, and native ad APIs while preserving the existing Cordova JavaScript bridge
 * **cordova/android:** use a large anchored adaptive banner as the default banner size
 * **cordova/android:** globally exclude transitive Legacy `play-services-ads` and `play-services-ads-lite` dependencies for mediation compatibility
+* **cordova/ios:** migrate banner, interstitial, rewarded, rewarded interstitial, app open, and native ads to the current Swift API names and async loading APIs
+* **cordova/ios:** replace deprecated child and teen request flags with `ageRestrictedTreatment`
+* **cordova/ios:** update `SKAdNetworkItems` to the current Google Mobile Ads SDK setup list
+* **cordova-native/ios:** migrate the default native ad view provider to the current Swift API names
 
 # [2.0.0-alpha.19](https://github.com/admob-plus/admob-plus/compare/admob-plus-cordova@2.0.0-alpha.18...admob-plus-cordova@2.0.0-alpha.19) (2024-11-15)
 
