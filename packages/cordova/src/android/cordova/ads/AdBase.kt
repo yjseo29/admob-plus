@@ -65,6 +65,16 @@ abstract class AdBase(ctx: ExecuteContext) {
         TODO("Not yet implemented")
     }
 
+    /**
+     * Called when an adShow request arrives before the ad finished loading.
+     * Default keeps the historical behavior: resolve false and do nothing.
+     * Banner overrides this to remember a pending show and attach the view
+     * once loading completes.
+     */
+    open fun showNotLoaded(ctx: ExecuteContext) {
+        ctx.resolve(false)
+    }
+
     open fun hide(ctx: ExecuteContext) {
         TODO("Not yet implemented")
     }

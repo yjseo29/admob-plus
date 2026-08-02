@@ -76,7 +76,13 @@ export class BannerAd extends MobileAd<BannerAdOptions> {
     marginTop?: number;
     marginBottom?: number;
   }) {
-    if (cordova.platformId === Platform.ios) {
+    // Android supports backgroundColor only (applied to the banner wrapper layout,
+    // visible behind the transparent navigation bar in edge-to-edge apps);
+    // marginTop/marginBottom remain iOS-only.
+    if (
+      cordova.platformId === Platform.ios ||
+      cordova.platformId === Platform.android
+    ) {
       const { backgroundColor: bgColor } = opts;
       return execAsync("bannerConfig", [
         { ...opts, backgroundColor: bgColor ? colorToRGBA(bgColor) : bgColor },

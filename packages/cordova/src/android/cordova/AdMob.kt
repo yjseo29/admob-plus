@@ -48,8 +48,17 @@ class AdMob : CordovaPlugin() {
         Actions.AD_LOAD to ::executeAdLoad,
         Actions.AD_SHOW to ::executeAdShow,
         Actions.AD_HIDE to ::executeAdHide,
+        Actions.BANNER_CONFIG to ::executeBannerConfig,
         Actions.WEBVIEW_GOTO to ::executeWebviewGoto,
     )
+
+    /**
+     * Whether the host app draws edge-to-edge (cordova-android `AndroidEdgeToEdge`
+     * preference). Exposed for Banner, which must offset a banner away from the
+     * transparent system bars in that mode ([preferences] itself is protected).
+     */
+    val isEdgeToEdge: Boolean
+        get() = preferences.getBoolean("AndroidEdgeToEdge", false)
 
     override fun pluginInitialize() {
         super.pluginInitialize()
@@ -181,7 +190,9 @@ class AdMob : CordovaPlugin() {
                 if (ad.isLoaded) {
                     ad.show(ctx)
                 } else {
-                    ctx.resolve(false)
+                    // Still resolves false for every ad type; Banner additionally
+                    // remembers the request and shows itself once loaded.
+                    ad.showNotLoaded(ctx)
                 }
             }
         }
@@ -190,6 +201,12 @@ class AdMob : CordovaPlugin() {
     private fun executeAdHide(ctx: ExecuteContext) {
         cordova.activity.runOnUiThread {
             ctx.optAdOrReject()?.hide(ctx)
+        }
+    }
+
+    private fun executeBannerConfig(ctx: ExecuteContext) {
+        cordova.activity.runOnUiThread {
+            Banner.config(ctx)
         }
     }
 

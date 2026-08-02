@@ -2,6 +2,7 @@ package admob.plus.cordova
 
 import admob.plus.cordova.ads.AdBase
 import android.app.Activity
+import android.graphics.Color
 import org.apache.cordova.CallbackContext
 import org.apache.cordova.PluginResult
 import org.json.JSONArray
@@ -26,6 +27,21 @@ data class ExecuteContext(
 
     fun optString(name: String): String? {
         return if (opts.has(name)) opts.optString(name) else null
+    }
+
+    /**
+     * Parses the `backgroundColor` option sent by `BannerAd.config()`.
+     * The JS layer converts any CSS color to `{r, g, b, a}` (0..255 each)
+     * via colorToRGBA — same wire format the iOS side consumes.
+     */
+    fun optBackgroundColor(): Int? {
+        val bgColor = opts.optJSONObject("backgroundColor") ?: return null
+        return Color.argb(
+            bgColor.optInt("a", 255),
+            bgColor.optInt("r"),
+            bgColor.optInt("g"),
+            bgColor.optInt("b"),
+        )
     }
 
     fun resolve() {

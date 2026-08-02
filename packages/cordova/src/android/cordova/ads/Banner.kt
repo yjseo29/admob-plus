@@ -7,11 +7,13 @@ import admob.plus.core.buildAdSize
 import admob.plus.core.pxToDp
 import android.annotation.SuppressLint
 import android.content.res.Configuration
+import android.os.Build
 import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
+import android.view.WindowInsets
 import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import com.google.android.libraries.ads.mobile.sdk.banner.AdSize
@@ -58,6 +60,14 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
     private var mAdView: AdView? = null
     private var mRelativeLayout: RelativeLayout? = null
     private var mAdViewOld: AdView? = null
+
+    /**
+     * True when show() was requested before the ad finished loading; the view is
+     * then attached in onAdLoaded. "Last call wins": hide() (and onDestroy) clears
+     * the flag, so a screen that hides the banner while a load is still in flight
+     * never gets a late pop-up.
+     */
+    private var pendingShow = false
 
     override val isLoaded: Boolean
         get() = mAdView?.getBannerAd() != null
@@ -116,6 +126,15 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
                         removeBannerView(mAdViewOld!!)
                         mAdViewOld = null
                     }
+                    if (pendingShow) {
+                        // A show() arrived while this load was in flight and no hide()
+                        // cancelled it since — attach now. Restore visibility too:
+                        // a show→hide→show sequence during the load leaves the view GONE.
+                        pendingShow = false
+                        adView.visibility = View.VISIBLE
+                        addBannerView()
+                        if (offset == null) applyWrapperInsets()
+                    }
                     runJustBeforeBeingDrawn(adView) {
                         emit(Events.BANNER_SIZE, computeAdSize())
                     }
@@ -143,10 +162,14 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
     }
 
     override fun show(ctx: ExecuteContext) {
+        pendingShow = false // showing right now — no deferred attach needed
+        // Always restore visibility first: hide() may have set GONE before the view
+        // was ever attached (hide while the first load was in flight). The
+        // parent==null branch below never touched visibility, which used to attach
+        // a permanently invisible banner in that sequence.
+        mAdView!!.visibility = View.VISIBLE
         if (mAdView!!.parent == null) {
             addBannerView()
-        } else if (mAdView!!.visibility == View.GONE) {
-            mAdView!!.visibility = View.VISIBLE
         } else {
             val wvParentView = getParentView(webView)
             if (rootLinearLayout !== wvParentView) {
@@ -154,14 +177,73 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
                 addBannerView()
             }
         }
+        if (offset == null) applyWrapperInsets()
         ctx.resolve()
     }
 
+    override fun showNotLoaded(ctx: ExecuteContext) {
+        // Remember the intent; onAdLoaded attaches the view unless a hide()
+        // cancels it first. Still resolves false so callers keep treating the
+        // banner as "not visible yet" (the size event reports the real moment).
+        pendingShow = true
+        ctx.resolve(false)
+    }
+
     override fun hide(ctx: ExecuteContext) {
+        pendingShow = false // cancel a deferred show — "last call wins"
         if (mAdView != null) {
             mAdView!!.visibility = View.GONE
         }
+        // The wrapper stays around while hidden; drop the system-bar padding so the
+        // WebView goes back to drawing edge-to-edge behind the bars.
+        if (offset == null) clearWrapperInsets()
         ctx.resolve()
+    }
+
+    /**
+     * In an edge-to-edge window (cordova-android `AndroidEdgeToEdge=true`) the
+     * wrapper LinearLayout spans the whole screen, so a bottom banner is laid out
+     * behind the transparent navigation bar (and a top banner behind the status
+     * bar). Pad the banner edge of the wrapper by the system-bar inset so the
+     * AdView clears the bar; the wrapper background (see [config]) fills the
+     * padded strip. No-op when the app is not edge-to-edge — the window already
+     * avoids the bars there, and padding would double the offset.
+     */
+    private fun applyWrapperInsets() {
+        val wrapper = rootLinearLayout ?: return
+        if (!plugin.isEdgeToEdge) return
+        wrapper.setOnApplyWindowInsetsListener { v, insets ->
+            val top: Int
+            val bottom: Int
+            if (Build.VERSION.SDK_INT >= 30) {
+                val bars = insets.getInsets(
+                    WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout()
+                )
+                top = bars.top
+                bottom = bars.bottom
+            } else {
+                // Stable insets = bar sizes independent of the IME, so an open
+                // keyboard does not inflate the banner offset.
+                @Suppress("DEPRECATION")
+                top = insets.stableInsetTop
+                @Suppress("DEPRECATION")
+                bottom = insets.stableInsetBottom
+            }
+            if (isPositionTop) {
+                v.setPadding(0, top, 0, v.paddingBottom)
+            } else {
+                v.setPadding(0, v.paddingTop, 0, bottom)
+            }
+            insets
+        }
+        wrapper.requestApplyInsets()
+    }
+
+    /** Removes the inset listener and padding added by [applyWrapperInsets]. */
+    private fun clearWrapperInsets() {
+        val wrapper = rootLinearLayout ?: return
+        wrapper.setOnApplyWindowInsetsListener(null)
+        wrapper.setPadding(0, 0, 0, 0)
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -183,6 +265,10 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
     }
 
     override fun onDestroy() {
+        pendingShow = false
+        // The wrapper (with the WebView inside) outlives the banner; make sure the
+        // system-bar padding does not linger once the banner is gone.
+        if (offset == null) clearWrapperInsets()
         if (mAdView != null) {
             removeBannerView(mAdView!!)
             mAdView = null
@@ -225,6 +311,9 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
         if (rootLinearLayout == null) {
             rootLinearLayout = LinearLayout(plugin.activity)
         }
+        // Keep the wrapper color in sync with BannerAd.config(), including when the
+        // wrapper is (re)created after the config call.
+        backgroundColor?.let { rootLinearLayout!!.setBackgroundColor(it) }
         if (wvParentView != null && wvParentView !== rootLinearLayout) {
             wvParentView.removeView(webView)
             val content = rootLinearLayout as LinearLayout?
@@ -294,6 +383,29 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
         @SuppressLint("StaticFieldLeak")
         private var rootLinearLayout: ViewGroup? = null
         private var screenWidth = 0
+
+        /** Background color for the banner wrapper layout, set via BannerAd.config(). */
+        private var backgroundColor: Int? = null
+
+        /**
+         * Handles the `bannerConfig` action (BannerAd.config() in JS).
+         *
+         * Android counterpart of AMBBanner.config on iOS, limited to `backgroundColor`.
+         * The color is applied to the wrapper LinearLayout that hosts the WebView and
+         * the banner. In edge-to-edge apps the wrapper extends behind the transparent
+         * navigation bar while the AdView sits above it, so without a color the
+         * window/theme background bleeds through that strip (e.g. a light band in
+         * dark mode). Must run on the UI thread.
+         */
+        fun config(ctx: ExecuteContext) {
+            ctx.optBackgroundColor()?.let { color ->
+                backgroundColor = color
+                // Apply immediately when a banner is already attached.
+                rootLinearLayout?.setBackgroundColor(color)
+            }
+            ctx.resolve()
+        }
+
         fun destroyParentView() {
             try {
                 val vg = getParentView(rootLinearLayout)
