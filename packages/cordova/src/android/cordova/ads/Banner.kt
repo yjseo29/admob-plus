@@ -69,6 +69,15 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
      */
     private var pendingShow = false
 
+    /**
+     * True while a bottom banner is temporarily hidden because the soft keyboard
+     * covers its area (see [applyWrapperInsets]). Distinct from a user hide():
+     * the banner restores itself when the keyboard goes away, and the JS-visible
+     * state (show/hide semantics) is not touched. Reset by show()/hide()/onDestroy
+     * so a user action always wins over the automatic toggle.
+     */
+    private var imeAutoHidden = false
+
     override val isLoaded: Boolean
         get() = mAdView?.getBannerAd() != null
 
@@ -163,6 +172,7 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
 
     override fun show(ctx: ExecuteContext) {
         pendingShow = false // showing right now — no deferred attach needed
+        imeAutoHidden = false // fresh user intent; the insets listener re-evaluates the IME state
         // Always restore visibility first: hide() may have set GONE before the view
         // was ever attached (hide while the first load was in flight). The
         // parent==null branch below never touched visibility, which used to attach
@@ -191,6 +201,7 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
 
     override fun hide(ctx: ExecuteContext) {
         pendingShow = false // cancel a deferred show — "last call wins"
+        imeAutoHidden = false // user hide overrides the automatic IME toggle
         if (mAdView != null) {
             mAdView!!.visibility = View.GONE
         }
@@ -208,6 +219,15 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
      * AdView clears the bar; the wrapper background (see [config]) fills the
      * padded strip. No-op when the app is not edge-to-edge — the window already
      * avoids the bars there, and padding would double the offset.
+     *
+     * The same listener also hides a bottom banner while the soft keyboard is
+     * visible: the keyboard draws over the banner area anyway, and if the banner
+     * kept its layout slot the WebView would shrink by keyboard + banner height
+     * (double subtraction). The banner (and its system-bar padding) comes back
+     * when the keyboard fully hides — see [imeAutoHidden]. Handling this here
+     * keeps it in the same insets dispatch cordova-android uses to resize the
+     * WebView, so the relayout happens in one pass with no JS round-trip.
+     * Top banners are unaffected — the keyboard never covers them.
      */
     private fun applyWrapperInsets() {
         val wrapper = rootLinearLayout ?: return
@@ -215,23 +235,42 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
         wrapper.setOnApplyWindowInsetsListener { v, insets ->
             val top: Int
             val bottom: Int
+            val ime: Int
             if (Build.VERSION.SDK_INT >= 30) {
                 val bars = insets.getInsets(
                     WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout()
                 )
                 top = bars.top
                 bottom = bars.bottom
+                ime = insets.getInsets(WindowInsets.Type.ime()).bottom
             } else {
-                // Stable insets = bar sizes independent of the IME, so an open
-                // keyboard does not inflate the banner offset.
+                // Stable insets = bar sizes independent of the IME; the IME inflates
+                // the system window insets, so the difference is the keyboard height.
                 @Suppress("DEPRECATION")
                 top = insets.stableInsetTop
                 @Suppress("DEPRECATION")
                 bottom = insets.stableInsetBottom
+                @Suppress("DEPRECATION")
+                ime = (insets.systemWindowInsetBottom - bottom).coerceAtLeast(0)
             }
             if (isPositionTop) {
                 v.setPadding(0, top, 0, v.paddingBottom)
+            } else if (ime > 0) {
+                // Keyboard covers the banner area — release the banner's layout slot
+                // so the WebView only shrinks by the keyboard height (cordova applies
+                // that as a WebView margin in the same dispatch).
+                if (mAdView?.visibility == View.VISIBLE) {
+                    imeAutoHidden = true
+                    mAdView?.visibility = View.GONE
+                }
+                if (imeAutoHidden) {
+                    v.setPadding(0, v.paddingTop, 0, 0)
+                }
             } else {
+                if (imeAutoHidden) {
+                    imeAutoHidden = false
+                    mAdView?.visibility = View.VISIBLE
+                }
                 v.setPadding(0, v.paddingTop, 0, bottom)
             }
             insets
@@ -256,12 +295,22 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
     }
 
     private fun reloadBannerView() {
-        if (mAdView == null || mAdView!!.visibility == View.GONE) return
+        // GONE normally means "hidden by the user" — skip the reload. But a banner
+        // auto-hidden by the IME (see imeAutoHidden) is still logically visible and
+        // must pick up the new width, e.g. rotating while the keyboard is open.
+        if (mAdView == null || (mAdView!!.visibility == View.GONE && !imeAutoHidden)) return
         if (mAdViewOld != null) removeBannerView(mAdViewOld!!)
         mAdViewOld = mAdView
         mAdView = createBannerView()
         loadBannerView(mAdView!!)
         addBannerView()
+        // The fresh AdView starts VISIBLE; re-evaluate the insets so a banner that
+        // was auto-hidden for the keyboard goes straight back to hidden until the
+        // keyboard closes (the listener alone only fires on the next insets change).
+        if (offset == null) {
+            imeAutoHidden = false
+            applyWrapperInsets()
+        }
     }
 
     override fun onDestroy() {
