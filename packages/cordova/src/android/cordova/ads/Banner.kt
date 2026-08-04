@@ -11,6 +11,7 @@ import android.graphics.Insets
 import android.os.Build
 import android.util.Log
 import android.view.Gravity
+import android.view.RoundedCorner
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
@@ -297,39 +298,45 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
      */
     private fun consumeBannerEdge(insets: WindowInsets): WindowInsets {
         if (Build.VERSION.SDK_INT >= 30) {
-            // Rebuild from scratch instead of copying [insets]: the copy constructor
-            // carries the RoundedCorner info over, and inset-aware children may take
-            // max(inset, corner radius) for edge padding (@totalpave/cordova-plugin-insets
-            // does) — the corner radius would then resurface as a phantom bottom inset
-            // even though the banner covers the corner area. A fresh builder has no
-            // corner info; copy the inset types children rely on and zero the banner
-            // edge for the bar/cutout types. Side effect: the DisplayCutout object and
-            // rounded corners are absent for the wrapper's subtree while a banner is
-            // shown — which is accurate, the banner owns that edge. (Known limitation:
-            // a *top* banner also drops bottom-corner info this way; acceptable.)
-            val consumedTypes = WindowInsets.Type.statusBars() or
-                WindowInsets.Type.navigationBars() or
-                WindowInsets.Type.displayCutout()
-            val builder = WindowInsets.Builder()
+            // Copy-based builder: everything about the *other* edges must stay intact.
+            // Consumers may mix rounded-corner radii into their edge math for BOTH
+            // edges (@totalpave/cordova-plugin-insets takes max(inset, corner radius)
+            // for top and bottom) — an earlier from-scratch rebuild dropped the TOP
+            // corner info too, which changed the reported top inset whenever a bottom
+            // banner toggled and made the whole page shift vertically on devices
+            // where the corner radius exceeds the status-bar inset (Galaxy S22).
+            // Only the banner edge is neutralized: its bar/cutout insets are zeroed
+            // and, on API 31+, its rounded corners are cleared as well (a radius left
+            // in place would resurface as a phantom inset on the consumed edge).
+            val builder = WindowInsets.Builder(insets)
             for (type in intArrayOf(
                     WindowInsets.Type.statusBars(),
                     WindowInsets.Type.navigationBars(),
-                    WindowInsets.Type.captionBar(),
-                    WindowInsets.Type.ime(),
-                    WindowInsets.Type.systemGestures(),
-                    WindowInsets.Type.mandatorySystemGestures(),
-                    WindowInsets.Type.tappableElement(),
                     WindowInsets.Type.displayCutout()
             )) {
                 val i = insets.getInsets(type)
-                val value = if ((type and consumedTypes) != 0) {
+                builder.setInsets(
+                    type,
                     if (isPositionTop) Insets.of(i.left, 0, i.right, i.bottom)
                     else Insets.of(i.left, i.top, i.right, 0)
-                } else {
-                    i
+                )
+            }
+            if (Build.VERSION.SDK_INT >= 31) {
+                val positions =
+                    if (isPositionTop) intArrayOf(
+                        RoundedCorner.POSITION_TOP_LEFT, RoundedCorner.POSITION_TOP_RIGHT
+                    )
+                    else intArrayOf(
+                        RoundedCorner.POSITION_BOTTOM_LEFT, RoundedCorner.POSITION_BOTTOM_RIGHT
+                    )
+                for (position in positions) {
+                    // Only clear corners that exist: the copy constructor leaves the
+                    // internal corner container null when the source has none, and
+                    // setRoundedCorner would NPE on it (checked against AOSP 12..16).
+                    if (insets.getRoundedCorner(position) != null) {
+                        builder.setRoundedCorner(position, null)
+                    }
                 }
-                builder.setInsets(type, value)
-                builder.setVisible(type, insets.isVisible(type))
             }
             return builder.build()
         }
