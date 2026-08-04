@@ -126,13 +126,23 @@ class AMBContext: AMBCoreContext {
                     let maxHeight = adSizeDict["maxHeight"] as? CGFloat {
                     return inlineAdaptiveBanner(width: width, maxHeight: maxHeight)
                 } else {
+                    // Large variants reserve a taller slot (better fill) but pad
+                    // smaller creatives with blank space; `large: false` selects the
+                    // classic anchored slot. Mirrors the Android mapping.
+                    let large = adSizeDict["large"] as? Bool ?? true
                     switch adSizeDict["orientation"] as? String {
                     case "portrait":
-                        return largePortraitAnchoredAdaptiveBanner(width: width)
+                        return large
+                            ? largePortraitAnchoredAdaptiveBanner(width: width)
+                            : portraitAnchoredAdaptiveBanner(width: width)
                     case "landscape":
-                        return largeLandscapeAnchoredAdaptiveBanner(width: width)
+                        return large
+                            ? largeLandscapeAnchoredAdaptiveBanner(width: width)
+                            : landscapeAnchoredAdaptiveBanner(width: width)
                     default:
-                        return largeAnchoredAdaptiveBanner(width: width)
+                        return large
+                            ? largeAnchoredAdaptiveBanner(width: width)
+                            : currentOrientationAnchoredAdaptiveBanner(width: width)
                     }
                 }
             } else if let width = adSizeDict["width"] as? Int,

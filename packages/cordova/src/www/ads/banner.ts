@@ -45,6 +45,11 @@ type BannerSize =
       adaptive: "anchored";
       orientation?: "portrait" | "landscape";
       width?: number;
+      /**
+       * Large anchored adaptive (default) reserves a taller slot for better fill;
+       * set false for the classic 50..90dp anchored slot.
+       */
+      large?: boolean;
     }
   | {
       adaptive: "inline";

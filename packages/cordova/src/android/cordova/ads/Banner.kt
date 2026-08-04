@@ -7,6 +7,7 @@ import admob.plus.core.buildAdSize
 import admob.plus.core.pxToDp
 import android.annotation.SuppressLint
 import android.content.res.Configuration
+import android.graphics.Insets
 import android.os.Build
 import android.util.Log
 import android.view.Gravity
@@ -255,7 +256,11 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
             }
             if (isPositionTop) {
                 v.setPadding(0, top, 0, v.paddingBottom)
-            } else if (ime > 0) {
+                // The wrapper now covers the top edge (padding + banner) — consume it
+                // so inset-aware children do not pad for it again.
+                return@setOnApplyWindowInsetsListener consumeBannerEdge(insets)
+            }
+            if (ime > 0) {
                 // Keyboard covers the banner area — release the banner's layout slot
                 // so the WebView only shrinks by the keyboard height (cordova applies
                 // that as a WebView margin in the same dispatch).
@@ -266,16 +271,78 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
                 if (imeAutoHidden) {
                     v.setPadding(0, v.paddingTop, 0, 0)
                 }
-            } else {
-                if (imeAutoHidden) {
-                    imeAutoHidden = false
-                    mAdView?.visibility = View.VISIBLE
-                }
-                v.setPadding(0, v.paddingTop, 0, bottom)
+                // Nothing consumed: the wrapper is not covering the bottom edge right
+                // now, and children must still see the IME inset.
+                return@setOnApplyWindowInsetsListener insets
             }
-            insets
+            if (imeAutoHidden) {
+                imeAutoHidden = false
+                mAdView?.visibility = View.VISIBLE
+            }
+            v.setPadding(0, v.paddingTop, 0, bottom)
+            consumeBannerEdge(insets)
         }
         wrapper.requestApplyInsets()
+    }
+
+    /**
+     * Returns [insets] with the banner edge zeroed for the types a child would use
+     * for edge padding (status/navigation bars + display cutout). While a banner is
+     * shown, the wrapper already covers that edge with its own padding plus the
+     * AdView, so inset-aware children must not pad for it again — e.g. the
+     * `@totalpave/cordova-plugin-insets` listener sits on the WebView (a child of
+     * the wrapper) and would otherwise report the navigation-bar inset to JS even
+     * though the WebView no longer reaches that edge. Standard Android insets
+     * etiquette: consume what you handled before dispatching to children.
+     */
+    private fun consumeBannerEdge(insets: WindowInsets): WindowInsets {
+        if (Build.VERSION.SDK_INT >= 30) {
+            // Rebuild from scratch instead of copying [insets]: the copy constructor
+            // carries the RoundedCorner info over, and inset-aware children may take
+            // max(inset, corner radius) for edge padding (@totalpave/cordova-plugin-insets
+            // does) — the corner radius would then resurface as a phantom bottom inset
+            // even though the banner covers the corner area. A fresh builder has no
+            // corner info; copy the inset types children rely on and zero the banner
+            // edge for the bar/cutout types. Side effect: the DisplayCutout object and
+            // rounded corners are absent for the wrapper's subtree while a banner is
+            // shown — which is accurate, the banner owns that edge. (Known limitation:
+            // a *top* banner also drops bottom-corner info this way; acceptable.)
+            val consumedTypes = WindowInsets.Type.statusBars() or
+                WindowInsets.Type.navigationBars() or
+                WindowInsets.Type.displayCutout()
+            val builder = WindowInsets.Builder()
+            for (type in intArrayOf(
+                    WindowInsets.Type.statusBars(),
+                    WindowInsets.Type.navigationBars(),
+                    WindowInsets.Type.captionBar(),
+                    WindowInsets.Type.ime(),
+                    WindowInsets.Type.systemGestures(),
+                    WindowInsets.Type.mandatorySystemGestures(),
+                    WindowInsets.Type.tappableElement(),
+                    WindowInsets.Type.displayCutout()
+            )) {
+                val i = insets.getInsets(type)
+                val value = if ((type and consumedTypes) != 0) {
+                    if (isPositionTop) Insets.of(i.left, 0, i.right, i.bottom)
+                    else Insets.of(i.left, i.top, i.right, 0)
+                } else {
+                    i
+                }
+                builder.setInsets(type, value)
+                builder.setVisible(type, insets.isVisible(type))
+            }
+            return builder.build()
+        }
+        // Pre-R only the merged system window insets can be replaced. Display cutout
+        // objects are immutable there, so a bottom-cutout device on API 28..29 may
+        // still report a residual cutout inset — acceptable for that rare combination.
+        @Suppress("DEPRECATION")
+        return insets.replaceSystemWindowInsets(
+            insets.systemWindowInsetLeft,
+            if (isPositionTop) 0 else insets.systemWindowInsetTop,
+            insets.systemWindowInsetRight,
+            if (isPositionTop) insets.systemWindowInsetBottom else 0
+        )
     }
 
     /** Removes the inset listener and padding added by [applyWrapperInsets]. */
@@ -283,6 +350,10 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
         val wrapper = rootLinearLayout ?: return
         wrapper.setOnApplyWindowInsetsListener(null)
         wrapper.setPadding(0, 0, 0, 0)
+        // Re-dispatch so children see the un-consumed insets again — without this,
+        // an inset-aware child (e.g. the insets plugin on the WebView) would keep
+        // the values from when the banner was still consuming the edge.
+        wrapper.requestApplyInsets()
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {

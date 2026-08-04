@@ -85,18 +85,23 @@ fun buildAdSize(opts: JSONObject, activity: Activity): AdSize {
         return AdSize.getCurrentOrientationInlineAdaptiveBannerAdSize(activity, width)
     }
     if ("anchored" == adaptive) {
+        // The Large variants reserve a taller slot (better fill/revenue potential),
+        // but smaller creatives are centered in it with blank space above/below.
+        // `large: false` selects the classic anchored slot (50..90dp, same as the
+        // previous SDK generation) for apps that prefer a slimmer banner.
+        val large = adSizeObj.optBoolean("large", true)
         return when (adSizeObj.optString("orientation")) {
-            "portrait" -> AdSize.getLargePortraitAnchoredAdaptiveBannerAdSize(
-                activity, width
-            )
+            "portrait" ->
+                if (large) AdSize.getLargePortraitAnchoredAdaptiveBannerAdSize(activity, width)
+                else AdSize.getPortraitAnchoredAdaptiveBannerAdSize(activity, width)
 
-            "landscape" -> AdSize.getLargeLandscapeAnchoredAdaptiveBannerAdSize(
-                activity, width
-            )
+            "landscape" ->
+                if (large) AdSize.getLargeLandscapeAnchoredAdaptiveBannerAdSize(activity, width)
+                else AdSize.getLandscapeAnchoredAdaptiveBannerAdSize(activity, width)
 
-            else -> AdSize.getLargeAnchoredAdaptiveBannerAdSize(
-                activity, width
-            )
+            else ->
+                if (large) AdSize.getLargeAnchoredAdaptiveBannerAdSize(activity, width)
+                else AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(activity, width)
         }
     }
     return AdSize(width, adSizeObj.optInt("height"))
