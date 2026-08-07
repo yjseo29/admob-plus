@@ -22,28 +22,28 @@ class RewardedInterstitial(ctx: ExecuteContext) : AdBase(ctx) {
         RewardedInterstitialAd.load(
             adRequest,
             object : AdLoadCallback<RewardedInterstitialAd> {
-                override fun onAdFailedToLoad(loadAdError: LoadAdError) {
+                override fun onAdFailedToLoad(adError: LoadAdError) {
                     mAd = null
-                    emit(Events.AD_LOAD_FAIL, loadAdError)
-                    ctx.reject(loadAdError.toString())
+                    emit(Events.AD_LOAD_FAIL, adError)
+                    ctx.reject(adError.toString())
                 }
 
-                override fun onAdLoaded(rewardedAd: RewardedInterstitialAd) {
-                    mAd = rewardedAd
+                override fun onAdLoaded(ad: RewardedInterstitialAd) {
+                    mAd = ad
                     val ssv = buildServerSideVerificationOptions(initOpts)
                     if (ssv != null) {
                         mAd!!.setServerSideVerificationOptions(ssv)
                     }
                     mAd!!.adEventCallback = object : RewardedInterstitialAdEventCallback {
                         override fun onAdDismissedFullScreenContent() {
-                            rewardedAd.destroy()
+                            ad.destroy()
                             emit(Events.AD_DISMISS)
                         }
 
-                        override fun onAdFailedToShowFullScreenContent(adError: FullScreenContentError) {
+                        override fun onAdFailedToShowFullScreenContent(fullScreenContentError: FullScreenContentError) {
                             mAd = null
-                            rewardedAd.destroy()
-                            emit(Events.AD_SHOW_FAIL, adError)
+                            ad.destroy()
+                            emit(Events.AD_SHOW_FAIL, fullScreenContentError)
                         }
 
                         override fun onAdShowedFullScreenContent() {

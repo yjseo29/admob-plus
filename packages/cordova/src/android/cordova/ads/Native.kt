@@ -55,8 +55,8 @@ class Native(ctx: ExecuteContext) : AdBase(ctx) {
                         emit(Events.AD_SHOW)
                     }
 
-                    override fun onAdFailedToShowFullScreenContent(error: FullScreenContentError) {
-                        emit(Events.AD_SHOW_FAIL, error)
+                    override fun onAdFailedToShowFullScreenContent(fullScreenContentError: FullScreenContentError) {
+                        emit(Events.AD_SHOW_FAIL, fullScreenContentError)
                     }
 
                     override fun onAdClicked() {

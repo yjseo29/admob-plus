@@ -30,10 +30,10 @@ class AppOpen(ctx: ExecuteContext) : AdBase(ctx) {
                             emit(Events.AD_DISMISS)
                         }
 
-                        override fun onAdFailedToShowFullScreenContent(adError: FullScreenContentError) {
+                        override fun onAdFailedToShowFullScreenContent(fullScreenContentError: FullScreenContentError) {
                             mAd = null
                             ad.destroy()
-                            emit(Events.AD_SHOW_FAIL, adError)
+                            emit(Events.AD_SHOW_FAIL, fullScreenContentError)
                         }
 
                         override fun onAdShowedFullScreenContent() {
@@ -53,10 +53,10 @@ class AppOpen(ctx: ExecuteContext) : AdBase(ctx) {
                     ctx.resolve()
                 }
 
-                override fun onAdFailedToLoad(loadAdError: LoadAdError) {
+                override fun onAdFailedToLoad(adError: LoadAdError) {
                     clear()
-                    emit(Events.AD_LOAD_FAIL, loadAdError)
-                    ctx.reject(loadAdError.toString())
+                    emit(Events.AD_LOAD_FAIL, adError)
+                    ctx.reject(adError.toString())
                 }
             })
     }

@@ -90,6 +90,9 @@ fun buildAdSize(opts: JSONObject, activity: Activity): AdSize {
         // `large: false` selects the classic anchored slot (50..90dp, same as the
         // previous SDK generation) for apps that prefer a slimmer banner.
         val large = adSizeObj.optBoolean("large", true)
+        // The non-large getters are deprecated in favor of the Large variants,
+        // but they are exactly what `large: false` asks for — keep them.
+        @Suppress("DEPRECATION")
         return when (adSizeObj.optString("orientation")) {
             "portrait" ->
                 if (large) AdSize.getLargePortraitAnchoredAdaptiveBannerAdSize(activity, width)

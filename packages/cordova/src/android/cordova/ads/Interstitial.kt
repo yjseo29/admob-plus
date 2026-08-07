@@ -22,18 +22,18 @@ class Interstitial(ctx: ExecuteContext) : AdBase(ctx) {
     override fun load(ctx: ExecuteContext) {
         clear()
         InterstitialAd.load(adRequest, object : AdLoadCallback<InterstitialAd> {
-            override fun onAdLoaded(interstitialAd: InterstitialAd) {
-                mAd = interstitialAd
+            override fun onAdLoaded(ad: InterstitialAd) {
+                mAd = ad
                 mAd!!.adEventCallback = object : InterstitialAdEventCallback {
                     override fun onAdDismissedFullScreenContent() {
-                        interstitialAd.destroy()
+                        ad.destroy()
                         emit(Events.AD_DISMISS)
                     }
 
-                    override fun onAdFailedToShowFullScreenContent(adError: FullScreenContentError) {
+                    override fun onAdFailedToShowFullScreenContent(fullScreenContentError: FullScreenContentError) {
                         mAd = null
-                        interstitialAd.destroy()
-                        emit(Events.AD_SHOW_FAIL, adError)
+                        ad.destroy()
+                        emit(Events.AD_SHOW_FAIL, fullScreenContentError)
                     }
 
                     override fun onAdShowedFullScreenContent() {
@@ -53,10 +53,10 @@ class Interstitial(ctx: ExecuteContext) : AdBase(ctx) {
                 ctx.resolve()
             }
 
-            override fun onAdFailedToLoad(loadAdError: LoadAdError) {
+            override fun onAdFailedToLoad(adError: LoadAdError) {
                 mAd = null
-                emit(Events.AD_LOAD_FAIL, loadAdError)
-                ctx.reject(loadAdError.toString())
+                emit(Events.AD_LOAD_FAIL, adError)
+                ctx.reject(adError.toString())
             }
         })
     }

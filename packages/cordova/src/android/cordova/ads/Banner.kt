@@ -123,8 +123,8 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
                         emit(Events.AD_SHOW)
                     }
 
-                    override fun onAdFailedToShowFullScreenContent(error: FullScreenContentError) {
-                        emit(Events.AD_SHOW_FAIL, error)
+                    override fun onAdFailedToShowFullScreenContent(fullScreenContentError: FullScreenContentError) {
+                        emit(Events.AD_SHOW_FAIL, fullScreenContentError)
                     }
                 }
                 // Next-Gen delivers callbacks on a background thread; view mutations stay on the UI thread.
@@ -153,8 +153,8 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
                 }
             }
 
-            override fun onAdFailedToLoad(error: LoadAdError) {
-                emit(Events.AD_LOAD_FAIL, error)
+            override fun onAdFailedToLoad(adError: LoadAdError) {
+                emit(Events.AD_LOAD_FAIL, adError)
             }
         })
     }
