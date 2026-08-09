@@ -184,8 +184,11 @@ class AMBPlugin: CDVPlugin {
     }
 
     func emit(_ eventName: String, data: Any = NSNull()) {
-        let result = CDVPluginResult(status: CDVCommandStatus_OK, messageAs: ["type": eventName, "data": data])
-        result?.setKeepCallbackAs(true)
+        // Explicitly optional so this compiles on cordova-ios <=7 (unaudited headers
+        // import the initializer as IUO, inferred as Optional) and >=8 (nonnull).
+        let result: CDVPluginResult? = CDVPluginResult(status: CDVCommandStatus.ok, messageAs: ["type": eventName, "data": data])
+        guard let result = result else { return }
+        result.setKeepCallbackAs(true)
         self.commandDelegate.send(result, callbackId: readyCallbackId)
     }
 
