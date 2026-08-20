@@ -56,7 +56,10 @@ fun buildOffset(opts: JSONObject): Int? {
 }
 
 class Banner(ctx: ExecuteContext) : AdBase(ctx) {
-    private val adSize: AdSize
+    // var: adaptive sizes bake in the screen width/orientation at computation time,
+    // so a rotation reload must recompute (see reloadBannerView) — reusing the
+    // init-time size would request a portrait-width ad on a landscape screen.
+    private var adSize: AdSize
     private val gravity: Int
     private val offset: Int?
     private var mAdView: AdView? = null
@@ -377,6 +380,17 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
         // auto-hidden by the IME (see imeAutoHidden) is still logically visible and
         // must pick up the new width, e.g. rotating while the keyboard is open.
         if (mAdView == null || (mAdView!!.visibility == View.GONE && !imeAutoHidden)) return
+        adSize = buildAdSize(initOpts, plugin.activity)
+        if (mAdView!!.parent == null) {
+            // Never attached — show() is still waiting for a fill (pendingShow) or the
+            // banner was only load()ed. There is nothing on screen to swap, and attaching
+            // here would put an empty ad slot (plus the consumed-inset padding) on screen;
+            // every further rotation would stack yet another empty AdView, because
+            // mAdViewOld is only cleaned up on a successful load. Re-request with the
+            // recomputed size and let onAdLoaded attach the view when a fill arrives.
+            loadBannerView(mAdView!!)
+            return
+        }
         if (mAdViewOld != null) removeBannerView(mAdViewOld!!)
         mAdViewOld = mAdView
         mAdView = createBannerView()
