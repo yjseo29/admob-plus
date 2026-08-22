@@ -4,6 +4,7 @@ import admob.plus.cordova.Events
 import admob.plus.cordova.ExecuteContext
 import admob.plus.core.applyAdRequestOptions
 import admob.plus.core.buildAdSize
+import admob.plus.core.dpToPx
 import admob.plus.core.pxToDp
 import android.annotation.SuppressLint
 import android.content.res.Configuration
@@ -27,6 +28,7 @@ import com.google.android.libraries.ads.mobile.sdk.common.AdLoadCallback
 import com.google.android.libraries.ads.mobile.sdk.common.FullScreenContentError
 import com.google.android.libraries.ads.mobile.sdk.common.LoadAdError
 import org.json.JSONObject
+import kotlin.math.roundToInt
 
 enum class AdSizeType {
     BANNER, LARGE_BANNER, MEDIUM_RECTANGLE, FULL_BANNER, LEADERBOARD;
@@ -502,10 +504,15 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
                 RelativeLayout.LayoutParams.MATCH_PARENT,
                 RelativeLayout.LayoutParams.MATCH_PARENT
             )
+            // The JS offset is in dp (CSS px) like every other layout value crossing the
+            // bridge (Native.kt x/y/width/height, the size event) — and like iOS, where
+            // the same number feeds an Auto Layout constant in points. setMargins wants
+            // physical pixels, so convert or the offset shrinks by the screen density.
+            val offsetPx = dpToPx(offset!!.toDouble()).roundToInt()
             if (isPositionTop) {
-                params.setMargins(0, offset!!, 0, 0)
+                params.setMargins(0, offsetPx, 0, 0)
             } else {
-                params.setMargins(0, 0, 0, offset!!)
+                params.setMargins(0, 0, 0, offsetPx)
             }
             plugin.contentView?.addView(mRelativeLayout, params)
                 ?: Log.e(TAG, "Unable to find content view")
